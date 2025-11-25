@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Cannon Destruct</title>
+
+    <!-- Import 3D and Physics libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+            background-color: #333;
+            color: white;
+            /* Prevent touch gestures on mobile */
+            touch-action: none;
+        }
+        /* The canvas will be added by three.js */
+        canvas {
+            display: block;
+        }
+        /* Instructions overlay / Level Menu */
+        #info {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 30px;
+            background-color: rgba(0, 0, 0, 0.8); /* Darker for menu */
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.2rem;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            z-index: 20;
+        }
+        /* Hide menu when game is active */
+        #info.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, -40%) scale(0.9);
+        }
+        /* Crosshair for aiming */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.7);
+            pointer-events: none; /* Allows clicks to pass through */
+            display: none; /* Hidden until pointer lock */
+            z-index: 10;
+        }
+        /* In-game UI container */
+        #game-ui {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end; /* Align items to bottom */
+            padding: 0 20px;
+            box-sizing: border-box; /* Include padding in width */
+            pointer-events: none; /* Allow clicks to pass through */
+            z-index: 10;
+        }
+        #game-ui button {
+            pointer-events: auto; /* Buttons are clickable */
+        }
+        
+        /* Right-side UI (Buttons) */
+        #game-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* Reset button */
+        #reset-btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(145deg, #f87171, #dc2626);
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            transition: all 0.2s ease;
+        }
+        
+        #reset-btn:hover {
+            background: linear-gradient(145deg, #ef4444, #b91c1c);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
+            transform: translateY(-2px);
+        }
+        #reset-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+        }
+        /* Back to Menu button */
+        #menu-btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(145deg, #60a5fa, #3b82f6);
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            transition: all 0.2s ease;
+        }
+        #menu-btn:hover {
+            background: linear-gradient(145deg, #3b82f6, #2563eb);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+            transform: translateY(-2px);
+        }
+        #menu-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        /* New Swap Weapon Button */
+        #swap-btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(145deg, #facc15, #eab308); /* Yellow */
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4);
+            transition: all 0.2s ease;
+        }
+        #swap-btn:hover {
+            background: linear-gradient(145deg, #eab308, #ca8a04);
+            box-shadow: 0 6px 20px rgba(234, 179, 8, 0.6);
+            transform: translateY(-2px);
+        }
+        #swap-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(234, 179, 8, 0.3);
+        }
+
+        /* --- New Control Scheme CSS --- */
+        #control-scheme-select {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .control-btn {
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            border: 2px solid #3b82f6;
+            background-color: transparent;
+            color: #3b82f6;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .control-btn:hover, .control-btn.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        #change-controls-btn {
+            background: none;
+            border: none;
+            color: #60a5fa;
+            text-decoration: underline;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        /* --- End Control Scheme CSS --- */
+        /* Level selection buttons */
+        #level-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr; /* Changed to 3 columns for better fit */
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .level-btn {
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            border: none;
+            background-color: #3b82f6;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .level-btn:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+        /* Hide game UI when menu is open */
+        .game-ui-hidden {
+            display: none !important;
+        }
+        /* --- New Mobile Controls CSS --- */
+        #mobile-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none; /* Hidden by default */
+            z-index: 10;
+        }
+        /* Renamed from #joystick-area */
+        #joystick-move-area {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 150px;
+            height: 150px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            pointer-events: auto;
+        }
+        /* Renamed from #joystick-knob */
+        #joystick-move-knob {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+        }
+        
+        /* New Aim Area */
+        #aim-area {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 100%;
+            pointer-events: auto;
+        }
+        #fire-button {
+            position: absolute;
+            bottom: 120px; /* Moved up */
+            right: 40px;
+            width: 100px;
+            height: 100px;
+            background-color: rgba(239, 68, 68, 0.5);
+            border: 3px solid rgba(239, 68, 68, 0.8);
+            border-radius: 50%;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+        #fire-button:active {
+            background-color: rgba(239, 68, 68, 0.8);
+        }
+        /* New Jump Button */
+        #jump-button {
+            position: absolute;
+            bottom: 40px;
+            right: 160px; /* Next to fire button */
+            width: 80px;
+            height: 80px;
+            background-color: rgba(60, 179, 113, 0.5);
+            border: 3px solid rgba(60, 179, 113, 0.8);
+            border-radius: 50%;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+        }
+        #jump-button:active {
+            background-color: rgba(60, 179, 113, 0.8);
+        }
+        
+        /* New Swap Button */
+        #swap-button {
+            position: absolute;
+            bottom: 240px; /* Above fire button */
+            right: 40px;
+            width: 80px;
+            height: 80px;
+            background-color: rgba(59, 130, 246, 0.5);
+            border: 3px solid rgba(59, 130, 246, 0.8);
+            border-radius: 50%;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+        }
+        #swap-button:active {
+             background-color: rgba(59, 130, 246, 0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- UI Elements -->
+    <div id="info">
+        <p id="info-title" style="font-size: 1.5rem; font-weight: 600; margin-top: 0;">Select Controls</p>
+        
+        <div id="control-scheme-select">
+            <button class="control-btn" id="ctrl-pc">PC (Mouse/Keyboard)</button>
+            <button class="control-btn" id="ctrl-mobile">Mobile (Touch)</button>
+            <button class="control-btn" id="ctrl-controller">Controller</button>
+        </div>
+        <div id="level-grid" style="display: none;">
+            <!-- Level buttons will be added here by JS -->
+        </div>
+        <button id="change-controls-btn" style="display: none;">Change Controls</button>
+    </div>
+    
+    <div id="crosshair">+</div>
+    
+    <div id="game-ui" class="game-ui-hidden">
+        <div id="weapon-display">CANNON</div>
+        <div id="game-buttons">
+            <button id="swap-btn">Swap</button> <!-- ADDED THIS BUTTON -->
+            <button id="reset-btn">Reset Level</button>
+            <button id="menu-btn">Back to Menu</button>
+        </div>
+    </div>
+
+    <!-- Mobile Controls UI -->
+    <div id="mobile-controls">
+        <div id="joystick-move-area">
+            <div id="joystick-move-knob"></div>
+        </div>
+        <div id="aim-area"></div>
+        <div id="fire-button">FIRE</div>
+        <div id="jump-button">JUMP</div>
+        <div id="swap-button">SWAP</div>
+    </div>
+
+    <script>
+        /**
+         * -------------------------------------------------------------------
+         * 3D Cannon Destruct - Refactored Code
+         * -------------------------------------------------------------------
+         * The code is now organized into the following objects:
+         * - Game:       Manages the main game state, loop, and level loading.
+         * - Graphics:   Handles all THREE.js setup (scene, camera, renderer, lights).
+         * - Physics:    Handles all CANNON.js setup (world, bodies, ground checks).
+         * - World:      Handles creating the ground and all level structures (blocks).
+         * - UI:         Manages all HTML DOM elements and menu interactions.
+         * - Controls:   Manages all user input (PC, Mobile, Gamepad).
+         * * The game starts by calling Game.init(), which then initializes
+         * all the other objects in the correct order.
+         * -------------------------------------------------------------------
+         */
+
+        /**
+         * @object Graphics
+         * Handles all THREE.js rendering, scene, camera, and lighting.
+         */
+        const Graphics = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            visualCannon: null,
+            cameraEuler: new THREE.Euler(0, 0, 0, 'YXZ'), // For FPS controls
+            explosions: [], // Array for explosion effects
+            CONSTANTS: {
+                START_POS: new THREE.Vector3(0, 2, 25),
+                CAMERA_OFFSET_Y: 0.5 // Eye level above physics body
+            },
+
+            init() {
+                // 1. Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x87ceeb); // Sky blue
+
+                // 2. Camera
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.copy(this.CONSTANTS.START_POS);
+                this.scene.add(this.camera);
+
+                // 3. Visual Cannon
+                this.createVisualCannon();
+                this.camera.add(this.visualCannon); // Attach cannon to camera
+
+                // 4. Renderer
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                document.body.appendChild(this.renderer.domElement);
+
+                // 5. Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+
+                const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+                dirLight.position.set(10, 20, 5);
+                dirLight.castShadow = true;
+                dirLight.shadow.mapSize.width = 2048;
+                dirLight.shadow.mapSize.height = 2048;
+                dirLight.shadow.camera.near = 0.5;
+                dirLight.shadow.camera.far = 500;
+                dirLight.shadow.camera.left = -50;
+                dirLight.shadow.camera.right = 50;
+                dirLight.shadow.camera.top = 50;
+                dirLight.shadow.camera.bottom = -50;
+                this.scene.add(dirLight);
+
+                // 6. Resize Listener
+                window.addEventListener('resize', this.onWindowResize.bind(this), false);
+            },
+
+            createVisualCannon() {
+                this.visualCannon = new THREE.Group();
+                
+                const darkMetal = new THREE.MeshStandardMaterial({
+                    color: 0x222222, // Darker metal
+                    metalness: 0.9,
+                    roughness: 0.4
+                });
+                
+                const wood = new THREE.MeshStandardMaterial({
+                    color: 0x8B4513, // SaddleBrown
+                    roughness: 0.8
+                });
+
+                // 1. Barrel (Tapered)
+                const barrelGeo = new THREE.CylinderGeometry(0.15, 0.25, 1.5, 32); // Tapered
+                const barrelMesh = new THREE.Mesh(barrelGeo, darkMetal);
+                barrelMesh.rotation.x = Math.PI / 2;
+                barrelMesh.position.z = -1.0; // Adjusted position
+                
+                // 2. Base Mount
+                const baseGeo = new THREE.BoxGeometry(0.6, 0.4, 0.8);
+                const baseMesh = new THREE.Mesh(baseGeo, wood);
+                baseMesh.position.z = -0.5;
+                
+                // 3. Wheels
+                const wheelGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.1, 16);
+                const wheelMat = new THREE.MeshStandardMaterial({
+                    color: 0x59300a, // Darker wood
+                    roughness: 0.7
+                });
+                
+                const wheelLeft = new THREE.Mesh(wheelGeo, wheelMat);
+                wheelLeft.rotation.z = Math.PI / 2; // Rotate to stand up
+                wheelLeft.position.set(-0.35, -0.1, -0.5); // Left of base
+                
+                const wheelRight = new THREE.Mesh(wheelGeo, wheelMat);
+                wheelRight.rotation.z = Math.PI / 2;
+                wheelRight.position.set(0.35, -0.1, -0.5); // Right of base
+                
+                this.visualCannon.add(barrelMesh);
+                this.visualCannon.add(baseMesh);
+                this.visualCannon.add(wheelLeft);
+                this.visualCannon.add(wheelRight);
+                
+                this.visualCannon.position.set(0.4, -0.4, -0.5); // Right, Down, Forward
+            },
+            
+            // Creates a visual explosion effect
+            createExplosion(position) {
+                const explosionGeo = new THREE.SphereGeometry(0.1, 32, 32);
+                const explosionMat = new THREE.MeshBasicMaterial({
+                    color: 0xffa500, // Orange
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const explosion = new THREE.Mesh(explosionGeo, explosionMat);
+                explosion.position.copy(position);
+                this.scene.add(explosion);
+                this.explosions.push(explosion);
+            },
+
+            onWindowResize() {
+                if (this.camera && this.renderer) {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                }
+            },
+
+            // Links camera position to the player's physics body
+            updateCameraPosition() {
+                if (Physics.playerBody) {
+                    this.camera.position.copy(Physics.playerBody.position);
+                    this.camera.position.y += this.CONSTANTS.CAMERA_OFFSET_Y;
+                }
+            },
+
+            // Resets camera rotation
+            resetCamera() {
+                this.cameraEuler.set(0, 0, 0);
+                this.camera.quaternion.setFromEuler(this.cameraEuler);
+                this.camera.position.copy(this.CONSTANTS.START_POS);
+            }
+        };
+
+        /**
+         * @object Physics
+         * Handles all CANNON.js world, bodies, and physics calculations.
+         */
+        const Physics = {
+            world: null,
+            playerBody: null,
+            CONSTANTS: {
+                TIMESTEP: 1 / 60,
+                GRAVITY: -9.82,
+                PLAYER_RADIUS: 0.5,
+                PLAYER_MASS: 5,
+                
+                // Weapon-specific physics
+                // [Cannon, Machine Gun, RPG]
+                WEAPON_PROJECTILE_MASS: [10, 0.5, 20],
+                WEAPON_PROJECTILE_RADIUS: [0.5, 0.1, 0.8],
+                WEAPON_FIRE_SPEED: [60, 120, 40],
+                
+                JUMP_VELOCITY: 8,
+                
+                // RPG Explosion physics
+                EXPLOSION_RADIUS: 8,
+                EXPLOSION_FORCE: 150
+            },
+
+            init() {
+                this.world = new CANNON.World();
+                this.world.gravity.set(0, this.CONSTANTS.GRAVITY, 0);
+                this.world.broadphase = new CANNON.NaiveBroadphase();
+                this.world.solver.iterations = 10;
+
+                this.createPlayerPhysics();
+            },
+
+            createPlayerPhysics() {
+                const playerShape = new CANNON.Sphere(this.CONSTANTS.PLAYER_RADIUS);
+                this.playerBody = new CANNON.Body({ 
+                    mass: this.CONSTANTS.PLAYER_MASS, 
+                    shape: playerShape 
+                });
+                this.playerBody.position.copy(Graphics.CONSTANTS.START_POS);
+                this.playerBody.angularFactor = new CANNON.Vec3(0, 0, 0); // Prevents rolling
+                this.world.addBody(this.playerBody);
+            },
+
+            // Checks if the player is standing on the ground
+            checkGroundStatus() {
+                if (!this.playerBody) return;
+
+                const rayStart = this.playerBody.position;
+                // Raycast slightly below the player sphere
+                const rayEnd = new CANNON.Vec3(rayStart.x, rayStart.y - this.CONSTANTS.PLAYER_RADIUS - 0.1, rayStart.z);
+                const result = new CANNON.RaycastResult();
+                
+                this.world.raycastClosest(rayStart, rayEnd, {}, result);
+                
+                Game.state.canJump = result.hasHit;
+            },
+
+            resetPlayerBody() {
+                if (this.playerBody) {
+                    this.playerBody.position.copy(Graphics.CONSTANTS.START_POS);
+                    this.playerBody.velocity.set(0, 0, 0);
+                    this.playerBody.angularVelocity.set(0, 0, 0);
+                }
+            }
+        };
+
+        /**
+         * @object World
+         * Handles creating the ground and level block structures.
+         */
+        const World = {
+            init() {
+                this.createGround();
+            },
+
+            createGround() {
+                // Graphics
+                const groundGeo = new THREE.PlaneGeometry(100, 100);
+                const groundMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x4CAF50, // Green grass
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+                groundMesh.rotation.x = -Math.PI / 2;
+                groundMesh.receiveShadow = true;
+                Graphics.scene.add(groundMesh);
+
+                // Physics
+                const groundShape = new CANNON.Plane();
+                const groundBody = new CANNON.Body({ mass: 0 }); // mass 0 = static
+                groundBody.addShape(groundShape);
+                groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+                Physics.world.addBody(groundBody);
+            },
+
+            createBlock(x, y, z, width = 1, height = 1, depth = 1, color = 0xdeb887) {
+                // Graphics
+                const blockGeo = new THREE.BoxGeometry(width, height, depth);
+                const blockMat = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    roughness: 0.6,
+                    metalness: 0.1
+                });
+                const blockMesh = new THREE.Mesh(blockGeo, blockMat);
+                blockMesh.position.set(x, y, z);
+                blockMesh.castShadow = true;
+                blockMesh.receiveShadow = true;
+                Graphics.scene.add(blockMesh);
+
+                // Physics
+                const blockShape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, depth / 2));
+                const blockBody = new CANNON.Body({ mass: 1 }); // Mass > 0 so it can fall
+                blockBody.position.set(x, y, z);
+                
+                blockBody.addShape(blockShape);
+                Physics.world.addBody(blockBody);
+                
+                // Link mesh and body
+                Game.blocks.push({ mesh: blockMesh, body: blockBody });
+            },
+
+            loadLevel(levelIndex) {
+                this.resetSimulation();
+                Controls.resetPlayerState(); // Reset player position/view
+
+                switch(levelIndex) {
+                    case 0: this.createBuilding_Level1(); break;
+                    case 1: this.createBuilding_Level2(); break;
+                    case 2: this.createBuilding_Level3(); break;
+                    case 3: this.createBuilding_Level4(); break;
+                    case 4: this.createBuilding_Level5(); break;
+                    case 5: this.createBuilding_Level6(); break;
+                    case 6: this.createBuilding_Level7(); break;
+                    case 7: this.createBuilding_Level8(); break;
+                    case 8: this.createBuilding_Level9(); break;
+                    default: this.createBuilding_Level1();
+                }
+            },
+
+            resetSimulation() {
+                // Reset blocks
+                for (const item of Game.blocks) {
+                    if (item.body) Physics.world.removeBody(item.body);
+                    if (item.mesh) Graphics.scene.remove(item.mesh);
+                }
+                Game.blocks = [];
+                
+                // Remove projectiles
+                for (const item of Game.projectiles) {
+                    if (item.body) Physics.world.removeBody(item.body);
+                    if (item.mesh) Graphics.scene.remove(item.mesh);
+                }
+                Game.projectiles = [];
+            },
+
+            // --- Level Definitions (Levels 1-7) ---
+            createBuilding_Level1() {
+                const baseSize = 3;
+                const height = 4;
+                const w = 1.5, h = 1.5, d = 1.5;
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < baseSize; x++) {
+                        for (let z = 0; z < baseSize; z++) {
+                            if ((x + z) % 2 === 0) {
+                                this.createBlock(
+                                    (x - (baseSize-1)/2) * w,
+                                    (y + 0.5) * h,
+                                    (z - (baseSize-1)/2) * d,
+                                    w, h, d, 0xa0522d
+                                );
+                            }
+                        }
+                    }
+                }
+            },
+            createBuilding_Level2() {
+                const length = 8;
+                const height = 2;
+                const w = 1.5, h = 1.5, d = 1.5;
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < length; x++) {
+                        this.createBlock(
+                            (x - (length-1)/2) * w,
+                            (y + 0.5) * h,
+                            0, w, h, d, 0x8B4513
+                        );
+                    }
+                }
+            },
+            createBuilding_Level3() {
+                const baseSize = 5;
+                const w = 1.5, h = 1.5, d = 1.5;
+                for (let y = 0; y < baseSize; y++) {
+                    const layerSize = baseSize - y;
+                    for (let x = 0; x < layerSize; x++) {
+                        for (let z = 0; z < layerSize; z++) {
+                            this.createBlock(
+                                (x - (layerSize-1)/2) * w,
+                                (y + 0.5) * h,
+                                (z - (layerSize-1)/2) * d,
+                                w, h, d, 0xCD853F
+                            );
+                        }
+                    }
+                }
+            },
+            createBuilding_Level4() {
+                const w = 1.5, h = 1.5, d = 1.5;
+                this.createBlock(-4 * w, 0.5 * h, 0, w, h, d, 0x696969);
+                this.createBlock(-4 * w, 1.5 * h, 0, w, h, d, 0x696969);
+                this.createBlock(-4 * w, 2.5 * h, 0, w, h, d, 0x696969);
+                this.createBlock(4 * w, 0.5 * h, 0, w, h, d, 0x696969);
+                this.createBlock(4 * w, 1.5 * h, 0, w, h, d, 0x696969);
+                this.createBlock(4 * w, 2.5 * h, 0, w, h, d, 0x696969);
+                this.createBlock(0, 3.0 * h, 0, w*7, h*0.5, d, 0xdeb887);
+                this.createBlock(0, 3.5 * h, 0, w*0.5, h*0.5, d*0.5, 0xff0000);
+            },
+            createBuilding_Level5() {
+                const w = 1.5, h = 1.5, d = 1.5;
+                const castleColor = 0x808080;
+                const towerHeight = 5;
+                const wallHeight = 2;
+                const wallLength = 11;
+                for (let y = 0; y < wallHeight; y++) {
+                    for (let x = 0; x < wallLength; x++) {
+                        if (x >= 4 && x <= 6) continue;
+                        this.createBlock((x - (wallLength - 1) / 2) * w, (y + 0.5) * h, -2 * d, w, h, d, castleColor);
+                    }
+                }
+                this.createBlock(0, (wallHeight + 0.5) * h, -2 * d, w * 3, h, d, castleColor);
+                for (let y = 0; y < towerHeight; y++) {
+                    this.createBlock((- (wallLength - 1) / 2 - 1) * w, (y + 0.5) * h, -2 * d, w, h, d, castleColor);
+                    this.createBlock(((wallLength - 1) / 2 + 1) * w, (y + 0.5) * h, -2 * d, w, h, d, castleColor);
+                }
+                const keepBase = 5;
+                const keepHeight = 7;
+                for (let y = 0; y < keepHeight; y++) {
+                    for (let x = 0; x < keepBase; x++) {
+                        for (let z = 0; z < keepBase; z++) {
+                            this.createBlock((x - (keepBase - 1) / 2) * w, (y + 0.5) * h, (-8 * d) + (z * d), w, h, d, castleColor);
+                        }
+                    }
+                }
+                this.createBlock(0, (keepHeight + 0.5) * h, -8 * d, w, h, d, 0xff0000);
+            },
+            createBuilding_Level6() {
+                const w = 1.5, h = 1.5, d = 1.5;
+                const fortColor = 0xF4A460;
+                const wallHeight = 3;
+                const towerHeight = 5;
+                const size = 7;
+                const centerOffset = (size - 1) / 2;
+                for (let y = 0; y < wallHeight; y++) {
+                    for (let i = 0; i < size; i++) {
+                        if (i !== 3) {
+                            this.createBlock((i - centerOffset) * w, (y + 0.5) * h, -centerOffset * d, w, h, d, fortColor);
+                        }
+                        this.createBlock((i - centerOffset) * w, (y + 0.5) * h, centerOffset * d, w, h, d, fortColor);
+                        if (i > 0 && i < size - 1) {
+                            this.createBlock(-centerOffset * w, (y + 0.5) * h, (i - centerOffset) * d, w, h, d, fortColor);
+                            this.createBlock(centerOffset * w, (y + 0.5) * h, (i - centerOffset) * d, w, h, d, fortColor);
+                        }
+                    }
+                }
+                const positions = [
+                    {x: -centerOffset, z: -centerOffset}, {x: centerOffset, z: -centerOffset},
+                    {x: -centerOffset, z: centerOffset}, {x: centerOffset, z: centerOffset}
+                ];
+                for (const pos of positions) {
+                    for (let y = 0; y < towerHeight; y++) {
+                        this.createBlock(pos.x * w, (y + 0.5) * h, pos.z * d, w, h, d, fortColor);
+                    }
+                }
+                const keepSize = 3;
+                const keepHeight = 4;
+                const keepOffset = (keepSize - 1) / 2;
+                for (let y = 0; y < keepHeight; y++) {
+                    for (let x = 0; x < keepSize; x++) {
+                        for (let z = 0; z < keepSize; z++) {
+                            this.createBlock((x - keepOffset) * w, (y + 0.5) * h, (z - keepOffset) * d, w, h, d, 0xCD853F);
+                        }
+                    }
+                }
+                this.createBlock(0, (keepHeight + 0.5) * h, 0, w, h, d, 0xff0000);
+            },
+            createBuilding_Level7() {
+                const w = 1.5, h = 1.5, d = 1.5;
+                const bldgColor = 0xC0C0C0;
+                const streetWidth = w * 2.5;
+                const bldgWidth = w * 2.5;
+                const bldgDepth = d * 2.5;
+                const createSkyscraper = (x, z, height, color = bldgColor) => {
+                    for (let y = 0; y < height; y++) {
+                        this.createBlock(x, (y + 0.5) * h, z, bldgWidth, h, bldgDepth, color);
+                    }
+                };
+                createSkyscraper(-streetWidth * 3, -d * 14, 15);
+                createSkyscraper(-streetWidth * 1, -d * 16, 20);
+                createSkyscraper( streetWidth * 1, -d * 16, 20);
+                createSkyscraper( streetWidth * 3, -d * 14, 15);
+                createSkyscraper(-streetWidth * 2, -d * 10, 10, 0xCD853F); 
+                createSkyscraper(0, -d * 12, 25);
+                createSkyscraper( streetWidth * 2, -d * 10, 10, 0xCD853F); 
+                createSkyscraper(-streetWidth * 3, -d * 6, 8);
+                createSkyscraper(-streetWidth * 1, -d * 6, 9);
+                createSkyscraper( streetWidth * 1, -d * 6, 9);
+                createSkyscraper( streetWidth * 3, -d * 6, 8);
+                createSkyscraper(-streetWidth * 2, -d * 2, 5); 
+                createSkyscraper(0, -d * 2, 6); 
+                createSkyscraper( streetWidth * 2, -d * 2, 5); 
+                this.createBlock(0, (25 + 0.5) * h, -d * 12, w, h, d, 0xff0000);
+            },
+            
+            // --- NEW LEVEL 8 (MASSIVE CITY 2) ---
+            createBuilding_Level8() {
+                const w = 1.5, h = 1.5, d = 1.5;
+                const bldgColor1 = 0x777777; // Dark Grey
+                const bldgColor2 = 0xAAAAAA; // Light Grey
+                const bldgColor3 = 0x5588AA; // Bluish
+                
+                const bldgWidth = 3;
+                const bldgDepth = 3;
+                const streetGap = 3.5; // Increased from 2.5
+                
+                const gridX = 5; // Reduced from 8
+                const gridZ = 6; // Reduced from 12
+
+                const createSkyscraper = (x, z, height, color = bldgColor1) => {
+                    const baseW = w * bldgWidth;
+                    const baseH = h;
+                    const baseD = d * bldgDepth;
+                    for (let y = 0; y < height; y++) {
+                        this.createBlock(x, (y + 0.5) * baseH, z, baseW, baseH, baseD, color);
+                    }
+                };
+
+                for (let x = 0; x < gridX; x++) {
+                    for (let z = 0; z < gridZ; z++) {
+                        const posX = (x - (gridX - 1) / 2) * (bldgWidth * w + streetGap * w);
+                        const posZ = (z - (gridZ - 1) / 2) * (bldgDepth * d + streetGap * d) - 10; // Shift city forward
+
+                        const height = Math.floor(Math.random() * 15) + 5; // Random height 5-20
+                        let color = bldgColor1;
+                        if (height > 15) color = bldgColor2;
+                        else if (height < 8) color = bldgColor3;
+
+                        createSkyscraper(posX, posZ, height, color);
+                        
+                        // Add a red block on the tallest buildings (height >= 19)
+                        if (height >= 19) {
+                             this.createBlock(posX, (height + 0.5) * h, posZ, w, h, d, 0xff0000);
+                        }
+                    }
+                }
+            },
+            
+            // --- NEW LEVEL 9 (TITANIC) ---
+            createBuilding_Level9() {
+                const w = 1.5, h = 1.5, d = 1.5;
+                const hullColorBottom = 0x8B0000; // Dark Red
+                const hullColorTop = 0x111111; // Black
+                const deckColor = 0xFFFFFF; // White
+                const funnelColor = 0xDEB887; // Tan
+                const targetColor = 0xFF0000; // Red
+
+                const shipBaseY = 0.5 * h;
+                const shipPosZ = -5 * d; // Position it a bit further back
+                
+                const segmentW = w * 3; // Use 3x-width blocks
+                const segmentH = h;
+                const segmentD = d * 3; // Use 3x-depth blocks
+
+                const shipLength = 7; // 7 segments long (7 * 3 = 21 blocks)
+                const shipWidth = 2; // 2 segments wide (2 * 3 = 6 blocks)
+                const hullHeight = 4; // 4 blocks high
+                const deckHeight = 3; // 3 blocks high
+
+                // 1. Build Hull (Bottom Red, Top Black)
+                for (let y = 0; y < hullHeight; y++) {
+                    for (let x = 0; x < shipLength; x++) {
+                        for (let z = 0; z < shipWidth; z++) {
+                            // Taper the bow (front)
+                            if (x > shipLength - 3 && (z === 0 || z === shipWidth - 1)) {
+                                continue;
+                            }
+                            
+                            const blockX = (x - (shipLength - 1) / 2) * segmentW;
+                            const blockY = shipBaseY + (y * segmentH);
+                            const blockZ = shipPosZ + (z - (shipWidth - 1) / 2) * segmentD;
+                            
+                            const color = (y < 2) ? hullColorBottom : hullColorTop; // 2 layers red, 2 layers black
+                            this.createBlock(blockX, blockY, blockZ, segmentW, segmentH, segmentD, color);
+                        }
+                    }
+                }
+                
+                // 2. Build Decks (White)
+                const deckLength = 6; // shorter than hull
+                const deckWidth = 2; // same width
+                const deckBaseY = shipBaseY + (hullHeight * segmentH);
+                
+                for (let y = 0; y < deckHeight; y++) {
+                    for (let x = 0; x < deckLength; x++) {
+                        for (let z = 0; z < deckWidth; z++) {
+                            const blockX = (x - (deckLength - 1) / 2) * segmentW;
+                            const blockY = deckBaseY + (y * segmentH);
+                            const blockZ = shipPosZ + (z - (deckWidth -1) / 2) * segmentD;
+                            this.createBlock(blockX, blockY, blockZ, segmentW, segmentH, segmentD, deckColor);
+                        }
+                    }
+                }
+
+                // 3. Funnels (4 funnels, back to single blocks for simplicity)
+                const funnelSizeW = 2 * w;
+                const funnelSizeD = 2 * d;
+                const funnelHeight = 5 * h;
+                const funnelBaseY = deckBaseY + (deckHeight * segmentH) + (0.5 * funnelHeight);
+                
+                const funnelXPositions = [
+                    (0 - (shipLength - 1) / 2) * segmentW + segmentW,
+                    (1 - (shipLength - 1) / 2) * segmentW + segmentW,
+                    (2 - (shipLength - 1) / 2) * segmentW + segmentW,
+                    (3 - (shipLength - 1) / 2) * segmentW + segmentW,
+                ];
+
+                this.createBlock(funnelXPositions[0], funnelBaseY, shipPosZ, funnelSizeW, funnelHeight, funnelSizeD, funnelColor);
+                this.createBlock(funnelXPositions[1], funnelBaseY, shipPosZ, funnelSizeW, funnelHeight, funnelSizeD, funnelColor);
+                this.createBlock(funnelXPositions[2], funnelBaseY, shipPosZ, funnelSizeW, funnelHeight, funnelSizeD, funnelColor);
+                this.createBlock(funnelXPositions[3], funnelBaseY, shipPosZ, funnelSizeW, funnelHeight, funnelSizeD, funnelColor);
+                
+                // 4. Target on 2nd funnel
+                const targetY = funnelBaseY + (0.5 * funnelHeight) + (0.5 * h);
+                this.createBlock(funnelXPositions[1], targetY, shipPosZ, w*0.5, h*0.5, d*0.5, targetColor);
+            }
+        };
+
+        /**
+         * @object UI
+         * Manages all DOM elements, menu logic, and UI state.
+         */
+        const UI = {
+            dom: {
+                info: null,
+                infoTitle: null,
+                controlSelect: null,
+                levelGrid: null,
+                changeControlsBtn: null,
+                crosshair: null,
+                gameUI: null,
+                resetBtn: null,
+                menuBtn: null,
+                mobileControls: null,
+                joystickMoveArea: null,
+                joystickMoveKnob: null,
+                aimArea: null,
+                fireButton: null,
+                jumpButton: null,
+                swapButton: null, // Added
+                weaponDisplay: null, // Added
+                swapBtn: null // Added for PC UI
+            },
+            
+            init() {
+                // Get all DOM elements
+                this.dom.info = document.getElementById('info');
+                this.dom.infoTitle = document.getElementById('info-title');
+                this.dom.controlSelect = document.getElementById('control-scheme-select');
+                this.dom.levelGrid = document.getElementById('level-grid');
+                this.dom.changeControlsBtn = document.getElementById('change-controls-btn');
+                this.dom.crosshair = document.getElementById('crosshair');
+                this.dom.gameUI = document.getElementById('game-ui');
+                this.dom.resetBtn = document.getElementById('reset-btn');
+                this.dom.menuBtn = document.getElementById('menu-btn');
+                this.dom.mobileControls = document.getElementById('mobile-controls');
+                this.dom.joystickMoveArea = document.getElementById('joystick-move-area');
+                this.dom.joystickMoveKnob = document.getElementById('joystick-move-knob');
+                this.dom.aimArea = document.getElementById('aim-area');
+                this.dom.fireButton = document.getElementById('fire-button');
+                this.dom.jumpButton = document.getElementById('jump-button');
+                this.dom.swapButton = document.getElementById('swap-button'); // Added
+                this.dom.weaponDisplay = document.getElementById('weapon-display'); // Added
+                this.dom.swapBtn = document.getElementById('swap-btn'); // Added for PC UI
+
+                this.bindGameButtons();
+                this.createLevelMenu();
+            },
+
+            // Binds in-game buttons (Reset, Menu)
+            bindGameButtons() {
+                // PC Clicks
+                this.dom.resetBtn.addEventListener('click', () => {
+                    if (Game.state.currentLevel !== -1) {
+                        Game.startLevel(Game.state.currentLevel); // Reload
+                    }
+                });
+                this.dom.menuBtn.addEventListener('click', Game.backToMenu);
+                this.dom.swapBtn.addEventListener('click', Controls.swapWeapon); // Added for PC UI
+
+                // Mobile Taps
+                this.dom.resetBtn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    if (Game.state.currentLevel !== -1) {
+                        Game.startLevel(Game.state.currentLevel); // Reload
+                    }
+                });
+                this.dom.menuBtn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    Game.backToMenu();
+                });
+                this.dom.swapBtn.addEventListener('touchend', (e) => { // Added for PC UI
+                    e.preventDefault();
+                    Controls.swapWeapon();
+                });
+            },
+
+            // Sets up the initial control selection and level grid
+            createLevelMenu() {
+                // --- Control Selection Logic ---
+                document.getElementById('ctrl-pc').addEventListener('click', () => Controls.setControlScheme('pc'));
+                document.getElementById('ctrl-mobile').addEventListener('click', () => Controls.setControlScheme('mobile'));
+                document.getElementById('ctrl-controller').addEventListener('click', () => Controls.setControlScheme('controller'));
+
+                // "Change Controls" button
+                this.dom.changeControlsBtn.addEventListener('click', () => {
+                    this.dom.infoTitle.innerText = "Select Controls";
+                    this.dom.controlSelect.style.display = 'flex';
+                    this.dom.levelGrid.style.display = 'none';
+                    this.dom.changeControlsBtn.style.display = 'none';
+                });
+
+                // --- Level Button Creation ---
+                const numLevels = 9; // Changed from 8
+                for (let i = 0; i < numLevels; i++) {
+                    const btn = document.createElement('button');
+                    btn.innerText = `Level ${i + 1}`;
+                    btn.className = 'level-btn';
+                    
+                    const startFunc = () => Game.startLevel(i);
+
+                    // Use click for PC/Controller, touchend for Mobile
+                    btn.addEventListener('click', () => {
+                        if (Game.state.controlScheme !== 'mobile') startFunc();
+                    });
+                    btn.addEventListener('touchend', (e) => {
+                        e.preventDefault();
+                        if (Game.state.controlScheme === 'mobile') startFunc();
+                    });
+                    this.dom.levelGrid.appendChild(btn);
+                }
+            },
+
+            // Shows the main menu
+            showMenu() {
+                this.dom.info.classList.remove('hidden');
+                this.dom.gameUI.classList.add('game-ui-hidden');
+                this.dom.crosshair.style.display = 'none';
+                this.dom.mobileControls.style.display = 'none';
+            },
+
+            // Hides the main menu and shows game UI
+            showGameUI() {
+                this.dom.info.classList.add('hidden');
+                this.dom.gameUI.classList.remove('game-ui-hidden');
+                this.dom.crosshair.style.display = 'block';
+
+                if (Game.state.controlScheme === 'mobile') {
+                    this.dom.mobileControls.style.display = 'block';
+                }
+                this.updateWeaponDisplay(); // Set initial weapon text
+            },
+
+            // Updates the weapon display UI
+            updateWeaponDisplay() {
+                const weaponNames = ["CANNON", "MACHINE GUN", "RPG"];
+                if (this.dom.weaponDisplay) {
+                    this.dom.weaponDisplay.innerText = weaponNames[Game.state.currentWeapon] || "CANNON";
+                }
+            }
+        };
+
+        /**
+         * @object Controls
+         * Manages all user input for PC, Mobile, and Gamepad.
+         */
+        const Controls = {
+            gamepadButtonCooldown: { fire: 0, reset: 0, menu: 0, jump: 0, swap: 0 },
+            joystickMove: {
+                active: false,
+                touchId: null,
+                baseX: 0,
+                baseY: 0
+            },
+            aimTouch: {
+                active: false,
+                touchId: null,
+                lastX: 0,
+                lastY: 0
+            },
+            CONSTANTS: {
+                PC_AIM_SENSITIVITY: 0.002,
+                MOBILE_JOYSTICK_MAX_DIST: 50,
+                GAMEPAD_DEADZONE: 0.15,
+                GAMEPAD_AIM_SPEED: 50,
+                PLAYER_MOVE_SPEED: 5,
+                // [Cannon, Machine Gun, RPG]
+                WEAPON_COOLDOWNS: [1, 50, 1500], // ms
+                GAMEPAD_BUTTON_COOLDOWN: 0.5 // seconds
+            },
+
+            // Called by UI when a control button is clicked
+            setControlScheme(scheme) {
+                Game.state.controlScheme = scheme;
+
+                // Update active button
+                document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(`ctrl-${scheme}`).classList.add('active');
+                
+                // Show level grid
+                UI.dom.infoTitle.innerText = "Select a Level";
+                UI.dom.controlSelect.style.display = 'none';
+                UI.dom.levelGrid.style.display = 'grid';
+                UI.dom.changeControlsBtn.style.display = 'block';
+
+                if (scheme === 'controller') {
+                    UI.dom.infoTitle.innerText = "Controller Active - Select Level";
+                }
+            },
+
+            // --- Control Setup ---
+            startControls() {
+                if (Game.state.controlScheme === 'pc') {
+                    this.initPointerLock();
+                } else if (Game.state.controlScheme === 'mobile') {
+                    this.initMobileControls();
+                }
+                // Controller is handled in the animate loop
+            },
+
+            stopControls() {
+                if (Game.state.controlScheme === 'pc') {
+                    document.exitPointerLock();
+                    // Listeners are removed by onPointerLockChange
+                } else if (Game.state.controlScheme === 'mobile') {
+                    this.removeMobileControls();
+                }
+                this.resetMovement();
+            },
+
+            resetMovement() {
+                 Game.state.movement = { forward: 0, backward: 0, left: 0, right: 0 };
+            },
+
+            // --- 1. PC Controls (Mouse/Keyboard) ---
+            initPointerLock() {
+                const element = Graphics.renderer.domElement;
+                document.addEventListener('pointerlockchange', this.onPointerLockChange.bind(this), false);
+                
+                const request = element.requestPointerLock();
+                if (request && typeof request.catch === 'function') {
+                    request.catch(() => { /* Ignore user cancellation */ });
+                }
+            },
+
+            onPointerLockChange() {
+                if (document.pointerLockElement === Graphics.renderer.domElement) {
+                    document.addEventListener('mousemove', this.onPCMouseMove, false);
+                    document.addEventListener('mousedown', this.onPCFireDown, false); // Renamed
+                    document.addEventListener('mouseup', this.onPCFireUp, false); // Added
+                    document.addEventListener('keydown', this.onPCKeyDown, false);
+                    document.addEventListener('keyup', this.onPCKeyUp, false);
+                } else {
+                    document.removeEventListener('mousemove', this.onPCMouseMove, false);
+                    document.removeEventListener('mousedown', this.onPCFireDown, false); // Renamed
+                    document.removeEventListener('mouseup', this.onPCFireUp, false); // Added
+                    document.removeEventListener('keydown', this.onPCKeyDown, false);
+                    document.removeEventListener('keyup', this.onPCKeyUp, false);
+                    
+                    if (!UI.dom.info.classList.contains('hidden')) {
+                        Game.backToMenu(); // Show menu if game was active
+                    }
+                }
+            },
+
+            onPCKeyDown(event) {
+                if (event.key === 'r' || event.key === 'R') {
+                    if (Game.state.currentLevel !== -1) {
+                        Game.startLevel(Game.state.currentLevel);
+                    }
+                }
+                switch(event.key.toLowerCase()) {
+                    case 'w': Game.state.movement.forward = 1; break;
+                    case 's': Game.state.movement.backward = 1; break;
+                    case 'a': Game.state.movement.left = 1; break;
+                    case 'd': Game.state.movement.right = 1; break;
+                    case ' ': Controls.jump(); break;
+                    case 'e': Controls.swapWeapon(); break; // Added
+                }
+            },
+    
+            onPCKeyUp(event) {
+                switch(event.key.toLowerCase()) {
+                    case 'w': Game.state.movement.forward = 0; break;
+                    case 's': Game.state.movement.backward = 0; break;
+                    case 'a': Game.state.movement.left = 0; break;
+                    case 'd': Game.state.movement.right = 0; break;
+                }
+            },
+
+            onPCMouseMove(event) {
+                Controls.updateAim(event.movementX || 0, event.movementY || 0);
+            },
+            
+            onPCFireDown() { // Renamed from onPCFire
+                Game.state.isFireButtonDown = true;
+                if (Game.state.currentWeapon !== 1) { // Fire immediately for semi-auto
+                    Controls.fireWeapon();
+                }
+            },
+
+            onPCFireUp() { // Added this function
+                Game.state.isFireButtonDown = false;
+            },
+
+            // --- 2. Mobile Controls (Touch) ---
+            initMobileControls() {
+                UI.dom.joystickMoveArea.addEventListener('touchstart', this.onJoystickMoveStart.bind(this), false);
+                UI.dom.joystickMoveArea.addEventListener('touchmove', this.onJoystickMoveMove.bind(this), false);
+                UI.dom.joystickMoveArea.addEventListener('touchend', this.onJoystickMoveEnd.bind(this), false);
+                UI.dom.joystickMoveArea.addEventListener('touchcancel', this.onJoystickMoveEnd.bind(this), false);
+
+                UI.dom.aimArea.addEventListener('touchstart', this.onAimStart.bind(this), false);
+                UI.dom.aimArea.addEventListener('touchmove', this.onAimMove.bind(this), false);
+                UI.dom.aimArea.addEventListener('touchend', this.onAimEnd.bind(this), false);
+                UI.dom.aimArea.addEventListener('touchcancel', this.onAimEnd.bind(this), false);
+
+                UI.dom.fireButton.addEventListener('touchstart', this.onMobileFireDown, false); // Renamed
+                UI.dom.fireButton.addEventListener('touchend', this.onMobileFireUp, false); // Added
+                UI.dom.fireButton.addEventListener('touchcancel', this.onMobileFireUp, false); // Added
+                UI.dom.jumpButton.addEventListener('touchstart', this.onMobileJump, false);
+                UI.dom.swapButton.addEventListener('touchstart', this.onMobileSwap, false); // Added
+            },
+
+            removeMobileControls() {
+                UI.dom.joystickMoveArea.removeEventListener('touchstart', this.onJoystickMoveStart.bind(this), false);
+                UI.dom.joystickMoveArea.removeEventListener('touchmove', this.onJoystickMoveMove.bind(this), false);
+                UI.dom.joystickMoveArea.removeEventListener('touchend', this.onJoystickMoveEnd.bind(this), false);
+                UI.dom.joystickMoveArea.removeEventListener('touchcancel', this.onJoystickMoveEnd.bind(this), false);
+
+                UI.dom.aimArea.removeEventListener('touchstart', this.onAimStart.bind(this), false);
+                UI.dom.aimArea.removeEventListener('touchmove', this.onAimMove.bind(this), false);
+                UI.dom.aimArea.removeEventListener('touchend', this.onAimEnd.bind(this), false);
+                UI.dom.aimArea.removeEventListener('touchcancel', this.onAimEnd.bind(this), false);
+                
+                UI.dom.fireButton.removeEventListener('touchstart', this.onMobileFireDown, false); // Renamed
+                UI.dom.fireButton.removeEventListener('touchend', this.onMobileFireUp, false); // Added
+                UI.dom.fireButton.removeEventListener('touchcancel', this.onMobileFireUp, false); // Added
+                UI.dom.jumpButton.removeEventListener('touchstart', this.onMobileJump, false);
+                UI.dom.swapButton.removeEventListener('touchstart', this.onMobileSwap, false); // Added
+            },
+
+            onMobileFireDown(e) { // Renamed from onMobileFire
+                e.preventDefault(); 
+                Game.state.isFireButtonDown = true;
+                if (Game.state.currentWeapon !== 1) { // Fire immediately for semi-auto
+                    Controls.fireWeapon();
+                }
+            },
+            onMobileFireUp(e) { // Added
+                e.preventDefault(); 
+                Game.state.isFireButtonDown = false; 
+            },
+            onMobileJump(e) { e.preventDefault(); Controls.jump(); },
+            onMobileSwap(e) { e.preventDefault(); Controls.swapWeapon(); }, // Added
+
+            onJoystickMoveStart(event) {
+                event.preventDefault();
+                const touch = event.changedTouches[0];
+                this.joystickMove.touchId = touch.identifier;
+                this.joystickMove.active = true;
+                
+                const rect = UI.dom.joystickMoveArea.getBoundingClientRect();
+                this.joystickMove.baseX = rect.left + rect.width / 2;
+                this.joystickMove.baseY = rect.top + rect.height / 2;
+            },
+
+            onJoystickMoveMove(event) {
+                event.preventDefault();
+                if (!this.joystickMove.active) return;
+                const touch = Array.from(event.changedTouches).find(t => t.identifier === this.joystickMove.touchId);
+                if (!touch) return;
+
+                let deltaX = touch.clientX - this.joystickMove.baseX;
+                let deltaY = touch.clientY - this.joystickMove.baseY;
+                
+                const maxDist = this.CONSTANTS.MOBILE_JOYSTICK_MAX_DIST;
+                let dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+                if (dist > maxDist) {
+                    deltaX = (deltaX / dist) * maxDist;
+                    deltaY = (deltaY / dist) * maxDist;
+                    dist = maxDist;
+                }
+                
+                UI.dom.joystickMoveKnob.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+                const strength = dist / maxDist;
+                const threshold = 0.2;
+                Game.state.movement.forward = (deltaY < -maxDist * threshold) ? strength : 0;
+                Game.state.movement.backward = (deltaY > maxDist * threshold) ? strength : 0;
+                Game.state.movement.left = (deltaX < -maxDist * threshold) ? strength : 0;
+                Game.state.movement.right = (deltaX > maxDist * threshold) ? strength : 0;
+            },
+
+            onJoystickMoveEnd(event) {
+                event.preventDefault();
+                if (!this.joystickMove.active) return;
+                const touchFound = Array.from(event.changedTouches).some(t => t.identifier === this.joystickMove.touchId);
+                if (!touchFound) return;
+
+                this.joystickMove.active = false;
+                this.joystickMove.touchId = null;
+                UI.dom.joystickMoveKnob.style.transform = `translate(0px, 0px)`;
+                this.resetMovement();
+            },
+
+            onAimStart(event) {
+                event.preventDefault();
+                const touch = event.changedTouches[0];
+                this.aimTouch.touchId = touch.identifier;
+                this.aimTouch.active = true;
+                this.aimTouch.lastX = touch.clientX;
+                this.aimTouch.lastY = touch.clientY;
+            },
+
+            onAimMove(event) {
+                event.preventDefault();
+                if (!this.aimTouch.active) return;
+                const touch = Array.from(event.changedTouches).find(t => t.identifier === this.aimTouch.touchId);
+                if (!touch) return;
+
+                const deltaX = touch.clientX - this.aimTouch.lastX;
+                const deltaY = touch.clientY - this.aimTouch.lastY;
+                
+                this.updateAim(deltaX, deltaY);
+                this.aimTouch.lastX = touch.clientX;
+                this.aimTouch.lastY = touch.clientY;
+            },
+
+            onAimEnd(event) {
+                event.preventDefault();
+                if (!this.aimTouch.active) return;
+                const touchFound = Array.from(event.changedTouches).some(t => t.identifier === this.aimTouch.touchId);
+                if (!touchFound) return;
+
+                this.aimTouch.active = false;
+                this.aimTouch.touchId = null;
+            },
+
+            // --- 3. Controller (Gamepad) ---
+            handleGamepadInput(dt) {
+                if (Game.state.controlScheme !== 'controller' || Game.state.currentLevel === -1) return;
+                const gp = navigator.getGamepads ? navigator.getGamepads()[0] : null;
+                if (!gp) return;
+
+                // --- Aiming (Right Stick) ---
+                const deadzone = this.CONSTANTS.GAMEPAD_DEADZONE;
+                let axisX = gp.axes[2] || 0;
+                let axisY = gp.axes[3] || 0;
+                if (Math.abs(axisX) < deadzone) axisX = 0;
+                if (Math.abs(axisY) < deadzone) axisY = 0;
+                if (axisX !== 0 || axisY !== 0) {
+                    this.updateAim(axisX * this.CONSTANTS.GAMEPAD_AIM_SPEED, axisY * this.CONSTANTS.GAMEPAD_AIM_SPEED);
+                }
+
+                // --- Movement (Left Stick) ---
+                let moveX = gp.axes[0] || 0;
+                let moveY = gp.axes[1] || 0;
+                if (Math.abs(moveX) < deadzone) moveX = 0;
+                if (Math.abs(moveY) < deadzone) moveY = 0;
+                Game.state.movement.forward = (moveY < -deadzone) ? Math.abs(moveY) : 0;
+                Game.state.movement.backward = (moveY > deadzone) ? Math.abs(moveY) : 0;
+                Game.state.movement.left = (moveX < -deadzone) ? Math.abs(moveX) : 0;
+                Game.state.movement.right = (moveX > deadzone) ? Math.abs(moveX) : 0;
+
+                // --- Buttons ---
+                const cooldown = this.CONSTANTS.GAMEPAD_BUTTON_COOLDOWN;
+                // Fire (Right Trigger)
+                if (gp.buttons[7] && gp.buttons[7].pressed) {
+                    if (Game.state.currentWeapon === 1) { // Machine Gun (full-auto)
+                        this.fireWeapon(); // This is already rate-limited by Game.state.isFiring
+                    } else if (this.gamepadButtonCooldown.fire <= 0) { // Cannon or RPG (semi-auto)
+                        this.fireWeapon();
+                        this.gamepadButtonCooldown.fire = cooldown;
+                    }
+                }
+                // Jump (B button)
+                if (gp.buttons[1] && gp.buttons[1].pressed && this.gamepadButtonCooldown.jump <= 0) { 
+                    this.jump();
+                    this.gamepadButtonCooldown.jump = cooldown;
+                }
+                // Reset (X button)
+                if (gp.buttons[2] && gp.buttons[2].pressed && this.gamepadButtonCooldown.reset <= 0) {
+                    if (Game.state.currentLevel !== -1) Game.startLevel(Game.state.currentLevel);
+                    this.gamepadButtonCooldown.reset = cooldown;
+                }
+                // Swap (Y button)
+                if (gp.buttons[3] && gp.buttons[3].pressed && this.gamepadButtonCooldown.swap <= 0) { 
+                    this.swapWeapon();
+                    this.gamepadButtonCooldown.swap = cooldown;
+                }
+                // Menu (Start button)
+                if (gp.buttons[9] && gp.buttons[9].pressed && this.gamepadButtonCooldown.menu <= 0) {
+                    Game.backToMenu();
+                    this.gamepadButtonCooldown.menu = cooldown;
+                }
+
+                // Update cooldowns
+                for (let key in this.gamepadButtonCooldown) {
+                    if (this.gamepadButtonCooldown[key] > 0) {
+                        this.gamepadButtonCooldown[key] -= dt;
+                    }
+                }
+            },
+
+            // --- 4. Shared Actions ---
+            swapWeapon() {
+                Game.state.currentWeapon = (Game.state.currentWeapon + 1) % 3; // 3 weapons
+                UI.updateWeaponDisplay();
+            },
+            
+            updateAim(deltaX, deltaY) {
+                const sensitivity = this.CONSTANTS.PC_AIM_SENSITIVITY;
+                Graphics.cameraEuler.y -= deltaX * sensitivity; // Yaw
+                Graphics.cameraEuler.x -= deltaY * sensitivity; // Pitch
+
+                // Clamp pitch
+                const maxPitch = Math.PI / 2 - 0.01;
+                Graphics.cameraEuler.x = Math.max(-maxPitch, Math.min(maxPitch, Graphics.cameraEuler.x));
+                
+                Graphics.camera.quaternion.setFromEuler(Graphics.cameraEuler);
+            },
+
+            jump() {
+                if (Game.state.canJump) {
+                    Physics.playerBody.velocity.y = Physics.CONSTANTS.JUMP_VELOCITY;
+                    Game.state.canJump = false;
+                }
+            },
+
+            fireWeapon() {
+                if (Game.state.isFiring) return;
+                Game.state.isFiring = true;
+                
+                const weaponIndex = Game.state.currentWeapon;
+                setTimeout(() => { Game.state.isFiring = false; }, this.CONSTANTS.WEAPON_COOLDOWNS[weaponIndex]);
+
+                const radius = Physics.CONSTANTS.WEAPON_PROJECTILE_RADIUS[weaponIndex];
+                const mass = Physics.CONSTANTS.WEAPON_PROJECTILE_MASS[weaponIndex];
+                const speed = Physics.CONSTANTS.WEAPON_FIRE_SPEED[weaponIndex];
+
+                // --- Graphics ---
+                let color = 0x333333; // Default cannon color
+                if (weaponIndex === 1) color = 0xFFFF00; // MG bullet color
+                if (weaponIndex === 2) color = 0x444444; // RPG color
+                
+                const ballGeo = new THREE.SphereGeometry(radius, 16, 16); // Lower poly for fast bullets
+                const ballMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.5 });
+                const ballMesh = new THREE.Mesh(ballGeo, ballMat);
+                ballMesh.castShadow = true;
+                Graphics.scene.add(ballMesh);
+
+                // --- Physics ---
+                const ballShape = new CANNON.Sphere(radius);
+                const ballBody = new CANNON.Body({ mass: mass });
+                ballBody.addShape(ballShape);
+                Physics.world.addBody(ballBody);
+
+                // Get camera position and direction
+                const direction = new THREE.Vector3();
+                Graphics.camera.getWorldDirection(direction);
+                const startPosition = new THREE.Vector3();
+                Graphics.camera.getWorldPosition(startPosition);
+
+                // Offset ball to fire from in front of camera
+                startPosition.addScaledVector(direction, 1.5);
+                ballBody.position.copy(startPosition);
+                
+                // Set velocity
+                ballBody.velocity.set(direction.x * speed, direction.y * speed, direction.z * speed);
+                
+                // --- Special RPG Logic ---
+                if (weaponIndex === 2) {
+                    ballBody.exploded = false;
+                    ballBody.collisionPosition = new CANNON.Vec3();
+                    
+                    ballBody.addEventListener("collide", (event) => {
+                        if (!ballBody.exploded) { // Explode only once
+                            ballBody.exploded = true;
+                            ballBody.collisionPosition.copy(ballBody.position);
+                        }
+                    });
+                }
+
+                Game.projectiles.push({ mesh: ballMesh, body: ballBody });
+            },
+
+            updatePlayerMovement() {
+                if (Game.state.currentLevel === -1 || !Physics.playerBody) return;
+
+                const speed = this.CONSTANTS.PLAYER_MOVE_SPEED;
+                const movement = Game.state.movement;
+                const inputVelocity = new THREE.Vector3();
+                const forward = new THREE.Vector3();
+                const right = new THREE.Vector3();
+
+                Graphics.camera.getWorldDirection(forward);
+                forward.y = 0;
+                forward.normalize();
+                
+                right.setFromMatrixColumn(Graphics.camera.matrix, 0);
+                right.y = 0;
+                right.normalize();
+
+                if (movement.forward > 0) inputVelocity.addScaledVector(forward, movement.forward);
+                if (movement.backward > 0) inputVelocity.addScaledVector(forward, -movement.backward);
+                if (movement.left > 0) inputVelocity.addScaledVector(right, -movement.left);
+                if (movement.right > 0) inputVelocity.addScaledVector(right, movement.right);
+                
+                if (inputVelocity.length() > 1) {
+                    inputVelocity.normalize();
+                }
+
+                // Apply velocity to physics body
+                Physics.playerBody.velocity.x = inputVelocity.x * speed;
+                Physics.playerBody.velocity.z = inputVelocity.z * speed;
+            },
+
+            resetPlayerState() {
+                Physics.resetPlayerBody();
+                Graphics.resetCamera();
+            }
+        };
+
+        /**
+         * @object Game
+         * Main game object, manages state and the primary game loop.
+         */
+        const Game = {
+            state: {
+                currentLevel: -1, // -1 = menu
+                controlScheme: '', // 'pc', 'mobile', 'controller'
+                isFiring: false,
+                canJump: false,
+                lastCallTime: 0,
+                movement: { forward: 0, backward: 0, left: 0, right: 0 },
+                currentWeapon: 0, // 0: Cannon, 1: MG, 2: RPG
+                isFireButtonDown: false // Added
+            },
+            // Arrays to link graphics and physics
+            projectiles: [],
+            blocks: [],
+
+            // --- Main Functions ---
+            init() {
+                Graphics.init();
+                Physics.init();
+                World.init();
+                UI.init();
+                this.animate(); // Start the game loop
+            },
+
+            startLevel(levelIndex) {
+                this.state.currentLevel = levelIndex;
+                World.loadLevel(levelIndex);
+                UI.showGameUI();
+                Controls.startControls();
+            },
+
+            backToMenu() {
+                Controls.stopControls();
+                UI.showMenu();
+                
+                if (Game.state.currentLevel !== -1) { 
+                    World.resetSimulation();
+                    Game.state.currentLevel = -1; 
+                }
+            },
+
+            // --- Game Loop ---
+            animate() {
+                requestAnimationFrame(this.animate.bind(this));
+                
+                const time = performance.now();
+                let dt = 0;
+                if (this.state.lastCallTime) {
+                    dt = (time - this.state.lastCallTime) / 1000;
+                    if (Physics.world) {
+                        Physics.world.step(Physics.CONSTANTS.TIMESTEP, dt);
+                    }
+                }
+                this.state.lastCallTime = time;
+
+                // Update explosion visuals
+                for (let i = Graphics.explosions.length - 1; i >= 0; i--) {
+                    const explosion = Graphics.explosions[i];
+                    const scale = explosion.scale.x + dt * 20; // Grow rate
+                    explosion.scale.set(scale, scale, scale);
+                    explosion.material.opacity -= dt * 2.0; // Fade rate
+
+                    if (explosion.material.opacity <= 0) {
+                        Graphics.scene.remove(explosion);
+                        Graphics.explosions.splice(i, 1);
+                    }
+                }
+
+                // Only run game logic if a level is active
+                if (this.state.currentLevel !== -1) {
+                    Physics.checkGroundStatus();
+                    Controls.handleGamepadInput(dt);
+                    Controls.updatePlayerMovement();
+
+                    // Handle full-auto firing for PC/Mobile
+                    if (Game.state.isFireButtonDown && Game.state.currentWeapon === 1) {
+                        Controls.fireWeapon();
+                    }
+
+                    // Update all projectiles
+                    for (let i = Game.projectiles.length - 1; i >= 0; i--) {
+                        const item = Game.projectiles[i];
+
+                        // --- Handle RPG Explosions ---
+                        if (item.body.exploded) {
+                            // 1. Create visual explosion
+                            Graphics.createExplosion(item.body.collisionPosition);
+
+                            // 2. Apply physics explosion
+                            const explosionRadius = Physics.CONSTANTS.EXPLOSION_RADIUS;
+                            const explosionForce = Physics.CONSTANTS.EXPLOSION_FORCE;
+                            const explosionPos = item.body.collisionPosition;
+
+                            for (const block of Game.blocks) {
+                                const distVec = new CANNON.Vec3();
+                                block.body.position.vsub(explosionPos, distVec);
+                                const distance = distVec.length();
+
+                                if (distance < explosionRadius && distance > 0) {
+                                    distVec.normalize();
+                                    const magnitude = explosionForce * (1.0 - distance / explosionRadius);
+                                    distVec.scale(magnitude, distVec);
+                                    // Apply impulse at the block's center of mass
+                                    block.body.applyImpulse(distVec, block.body.position); 
+                                }
+                            }
+
+                            // 3. Remove projectile
+                            Physics.world.removeBody(item.body);
+                            Graphics.scene.remove(item.mesh);
+                            Game.projectiles.splice(i, 1);
+                            continue; // Skip to next projectile
+                        }
+                        
+                        // Default projectile update
+                        item.mesh.position.copy(item.body.position);
+                        item.mesh.quaternion.copy(item.body.quaternion);
+                    }
+
+                    // Update all block meshes
+                    for (const item of Game.blocks) {
+                        item.mesh.position.copy(item.body.position);
+                        item.mesh.quaternion.copy(item.body.quaternion);
+                    }
+                    
+                    // Link camera to player
+                    Graphics.updateCameraPosition();
+                }
+
+                // Always render
+                Graphics.renderer.render(Graphics.scene, Graphics.camera);
+            }
+        };
+
+        // --- Start The Game ---
+        Game.init();
+
+    </script>
+</body>
+</html>
