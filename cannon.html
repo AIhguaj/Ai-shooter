@@ -61,6 +61,8 @@
             z-index: 10;
         }
         
+        /* --- Editor UI (REMOVED) --- */
+        
         /* In-game UI container */
         #game-ui {
             position: absolute;
@@ -359,11 +361,14 @@
             <button id="back-btn" class="control-btn" style="margin-top: 15px; grid-column: 1 / -1; background-color: #6b7280; border-color: #6b7280; color: white;">Back</button>
         </div>
         
+        <!-- Editor Buttons (REMOVED) -->
+        
         <button id="change-controls-btn" style="display: none;">Change Controls</button>
     </div>
     
     <div id="crosshair">+</div>
     
+    <!-- Editor UI (REMOVED) -->
     <!-- FIX: This div must exist for the JS to find, even if it's not used -->
     <div id="editor-ui" style="display: none;"></div>
     
@@ -390,7 +395,7 @@
     <script>
         /**
          * -------------------------------------------------------------------
-         * 3D Cannon Destruct - Updated with AK47, Shrinkgun & Buffs
+         * 3D Cannon Destruct - Refactored Code
          * -------------------------------------------------------------------
          */
 
@@ -414,11 +419,21 @@
             visualSlingshot: null,
             visualSnowball: null,
             visualBaseballBat: null,
-            visualShrinkGun: null, // Renamed from Flamethrower
+            visualShrinkGun: null, // Renamed
             visualGrenadeLauncher: null,
             visualBow: null,
-            visualShotgun: null, 
-            visualAK47: null, // Added
+            visualShotgun: null,
+            visualAK47: null,
+            visualMinigun: null,
+            visualM1Garand: null,
+            visualCrowbar: null,
+            visualGlock: null,
+            visualRevolver: null, // Renamed
+            visualM3GreaseGun: null, // Renamed
+            visualTimeFreezeGun: null, // Renamed
+            visualBowlingBall: null,
+            visualMP5: null,
+            visualTacticalMissile: null, // Added
             soundwaveEffect: null,
             laserBeam: null,
             muzzleFlash: null,
@@ -435,7 +450,7 @@
                 this.scene.background = new THREE.Color(0x87ceeb); // Sky blue
 
                 // 2. Camera
-                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000); // FIX: Changed near plane to 0.01
                 this.camera.position.copy(this.CONSTANTS.START_POS);
                 this.scene.add(this.camera);
 
@@ -455,8 +470,18 @@
                 this.createVisualShrinkGun(); // Renamed
                 this.createVisualGrenadeLauncher();
                 this.createVisualBow();
-                this.createVisualShotgun(); 
-                this.createVisualAK47(); // Added
+                this.createVisualShotgun();
+                this.createVisualAK47();
+                this.createVisualMinigun();
+                this.createVisualM1Garand();
+                this.createVisualCrowbar();
+                this.createVisualGlock();
+                this.createVisualRevolver(); // Renamed
+                this.createVisualM3GreaseGun(); // Renamed
+                this.createVisualTimeFreezeGun(); // Renamed
+                this.createVisualBowlingBall();
+                this.createVisualMP5();
+                this.createVisualTacticalMissile(); // Added
                 
                 this.camera.add(this.visualCannon);
                 this.camera.add(this.visualMachineGun);
@@ -471,10 +496,20 @@
                 this.camera.add(this.visualSnowball);
                 this.camera.add(this.visualBaseballBat);
                 this.camera.add(this.visualShrinkGun); // Renamed
-                this.camera.add(this.visualGrenadeLauncher); 
-                this.camera.add(this.visualBow); 
-                this.camera.add(this.visualShotgun); 
-                this.camera.add(this.visualAK47); // Added
+                this.camera.add(this.visualGrenadeLauncher);
+                this.camera.add(this.visualBow);
+                this.camera.add(this.visualShotgun);
+                this.camera.add(this.visualAK47);
+                this.camera.add(this.visualMinigun);
+                this.camera.add(this.visualM1Garand);
+                this.camera.add(this.visualCrowbar);
+                this.camera.add(this.visualGlock);
+                this.camera.add(this.visualRevolver); // Renamed
+                this.camera.add(this.visualM3GreaseGun); // Renamed
+                this.camera.add(this.visualTimeFreezeGun); // Renamed
+                this.camera.add(this.visualBowlingBall);
+                this.camera.add(this.visualMP5);
+                this.camera.add(this.visualTacticalMissile); // Added
                 
                 // Laser beam visual
                 const lineMat = new THREE.LineBasicMaterial({ 
@@ -506,6 +541,8 @@
                 this.soundwaveEffect.visible = false;
                 this.camera.add(this.soundwaveEffect); // Attach to camera
                 this.soundwaveEffect.position.set(0, 0, -1); // In front of camera
+                
+                // Muzzle Flash (Universal) - REMOVED
                 
                 // 4. Renderer
                 this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -599,37 +636,54 @@
                     depthTest: false // Don't clip through walls
                 });
                 
-                const magMat = new THREE.MeshStandardMaterial({ // New green material
-                    color: 0x225522, // Dark green
-                    roughness: 0.6,
-                    depthTest: false // Don't clip through walls
+                const darkMetal = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.9,
+                    roughness: 0.5,
+                    depthTest: false
                 });
 
                 // Body
-                const bodyGeo = new THREE.BoxGeometry(0.2, 0.3, 1.0);
+                const bodyGeo = new THREE.BoxGeometry(0.2, 0.25, 1.2);
                 const bodyMesh = new THREE.Mesh(bodyGeo, metal);
                 bodyMesh.position.z = -1.0;
 
                 // Barrel
-                const barrelGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 16);
-                const barrelMesh = new THREE.Mesh(barrelGeo, metal);
+                const barrelGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.0, 16);
+                const barrelMesh = new THREE.Mesh(barrelGeo, darkMetal);
                 barrelMesh.rotation.x = Math.PI / 2;
-                barrelMesh.position.z = -1.9;
+                barrelMesh.position.z = -2.1;
+
+                // Gas tube
+                const gasTubeGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.8, 8);
+                const gasTubeMesh = new THREE.Mesh(gasTubeGeo, darkMetal);
+                gasTubeMesh.rotation.x = Math.PI / 2;
+                gasTubeMesh.position.set(0, -0.06, -1.9);
 
                 // Handle
-                const handleGeo = new THREE.BoxGeometry(0.1, 0.3, 0.1);
-                const handleMesh = new THREE.Mesh(handleGeo, metal);
-                handleMesh.position.set(0, -0.2, -0.7);
+                const handleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.2, 8);
+                const handleMesh = new THREE.Mesh(handleGeo, darkMetal);
+                handleMesh.position.set(0, 0.2, -0.8);
 
                 // Stock
-                const stockGeo = new THREE.BoxGeometry(0.2, 0.2, 0.5);
+                const stockGeo = new THREE.BoxGeometry(0.18, 0.2, 0.6);
                 const stockMesh = new THREE.Mesh(stockGeo, metal);
-                stockMesh.position.set(0, -0.05, -0.5);
+                stockMesh.position.set(0, -0.02, -0.1);
                 
-                // Magazine
-                const magGeo = new THREE.BoxGeometry(0.2, 0.4, 0.4);
-                const magMesh = new THREE.Mesh(magGeo, magMat); // Use green material
-                magMesh.position.set(0, -0.35, -1.2); 
+                // Magazine (Box Mag)
+                const magGeo = new THREE.BoxGeometry(0.1, 0.4, 0.5);
+                const magMesh = new THREE.Mesh(magGeo, darkMetal);
+                magMesh.position.set(-0.15, -0.1, -1.0); // To the side
+                
+                // Bipod (folded)
+                const bipodLegGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.4, 8);
+                const bipodLeft = new THREE.Mesh(bipodLegGeo, darkMetal);
+                bipodLeft.position.set(-0.05, -0.1, -1.8);
+                bipodLeft.rotation.z = 0.2;
+                
+                const bipodRight = new THREE.Mesh(bipodLegGeo, darkMetal);
+                bipodRight.position.set(0.05, -0.1, -1.8);
+                bipodRight.rotation.z = -0.2;
                 
                 // Muzzle Flash
                 const muzzleFlashGeo = new THREE.ConeGeometry(0.1, 0.3, 8);
@@ -637,88 +691,26 @@
                     color: 0xFFFF00, 
                     transparent: true, 
                     opacity: 0.9,
-                    blending: THREE.AdditiveBlending, // Brighter flash
-                    depthTest: false // Don't clip through walls
+                    blending: THREE.AdditiveBlending,
+                    depthTest: false
                 });
                 this.muzzleFlash = new THREE.Mesh(muzzleFlashGeo, muzzleFlashMat);
                 this.muzzleFlash.rotation.x = Math.PI / 2;
-                this.muzzleFlash.position.z = -2.3; // End of barrel
-                this.muzzleFlash.visible = false; // Start hidden
+                this.muzzleFlash.position.set(0, 0, -2.6); // End of new barrel
+                this.muzzleFlash.visible = false;
 
                 this.visualMachineGun.add(bodyMesh);
                 this.visualMachineGun.add(barrelMesh);
+                this.visualMachineGun.add(gasTubeMesh);
                 this.visualMachineGun.add(handleMesh);
                 this.visualMachineGun.add(stockMesh);
                 this.visualMachineGun.add(magMesh);
+                this.visualMachineGun.add(bipodLeft);
+                this.visualMachineGun.add(bipodRight);
                 this.visualMachineGun.add(this.muzzleFlash);
                 
-                this.visualMachineGun.position.set(0.4, -0.5, -0.5); // Lowered
-                this.visualMachineGun.visible = false; // Hidden by default
-            },
-
-            createVisualAK47() {
-                this.visualAK47 = new THREE.Group();
-                this.visualAK47.renderOrder = 999;
-                
-                const metal = new THREE.MeshStandardMaterial({
-                    color: 0x333333,
-                    metalness: 0.8,
-                    roughness: 0.3,
-                    depthTest: false
-                });
-                
-                const wood = new THREE.MeshStandardMaterial({
-                    color: 0x8B4513, // Classic Wood
-                    roughness: 0.6,
-                    depthTest: false
-                });
-
-                // Body (Metal)
-                const bodyGeo = new THREE.BoxGeometry(0.15, 0.25, 0.8);
-                const bodyMesh = new THREE.Mesh(bodyGeo, metal);
-                bodyMesh.position.z = -1.0;
-
-                // Barrel (Longer)
-                const barrelGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.0, 16);
-                const barrelMesh = new THREE.Mesh(barrelGeo, metal);
-                barrelMesh.rotation.x = Math.PI / 2;
-                barrelMesh.position.z = -1.9;
-
-                // Gas Tube (Above barrel)
-                const gasGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.6, 16);
-                const gasMesh = new THREE.Mesh(gasGeo, wood);
-                gasMesh.rotation.x = Math.PI / 2;
-                gasMesh.position.set(0, 0.1, -1.7);
-
-                // Handle (Wood)
-                const handleGeo = new THREE.BoxGeometry(0.1, 0.35, 0.12);
-                const handleMesh = new THREE.Mesh(handleGeo, wood);
-                handleMesh.rotation.x = 0.2;
-                handleMesh.position.set(0, -0.3, -0.8);
-
-                // Stock (Wood)
-                const stockGeo = new THREE.BoxGeometry(0.15, 0.3, 0.6);
-                const stockMesh = new THREE.Mesh(stockGeo, wood);
-                stockMesh.position.set(0, -0.1, -0.3);
-                
-                // Magazine (Curved - approximated with rotation)
-                const magGeo = new THREE.BoxGeometry(0.12, 0.5, 0.25);
-                const magMesh = new THREE.Mesh(magGeo, metal); 
-                magMesh.rotation.x = 0.4;
-                magMesh.position.set(0, -0.4, -1.1);
-                
-                this.visualAK47.add(bodyMesh);
-                this.visualAK47.add(barrelMesh);
-                this.visualAK47.add(gasMesh);
-                this.visualAK47.add(handleMesh);
-                this.visualAK47.add(stockMesh);
-                this.visualAK47.add(magMesh);
-                
-                // Re-use muzzle flash logic manually in firing function or add clone here if needed
-                // For simplicity, we will just use the same logic in showMuzzleFlash but attach to this group if visible
-                
-                this.visualAK47.position.set(0.4, -0.5, -0.5);
-                this.visualAK47.visible = false; 
+                this.visualMachineGun.position.set(0.4, -0.5, -0.5);
+                this.visualMachineGun.visible = false;
             },
 
             createVisualRPG() {
@@ -1029,45 +1021,37 @@
                 this.visualBaseballBat.visible = false; // Hidden by default
             },
             
-            createVisualShrinkGun() { // Renamed from Flamethrower
+            createVisualShrinkGun() { // Renamed from createVisualFlamethrower
                 this.visualShrinkGun = new THREE.Group();
                 this.visualShrinkGun.renderOrder = 999; // Render on top
                 
-                const metal = new THREE.MeshStandardMaterial({
-                    color: 0x222222, // Dark metal
+                const bodyMat = new THREE.MeshStandardMaterial({
+                    color: 0xEEEEEE, // White
                     metalness: 0.8,
                     roughness: 0.4,
                     depthTest: false
                 });
                 
-                const tankMat = new THREE.MeshStandardMaterial({
-                    color: 0x9932CC, // DarkOrchid (Purple) for Shrink effect
+                const nozzleMat = new THREE.MeshStandardMaterial({
+                    color: 0x0077FF, // Blue
                     metalness: 0.7,
                     roughness: 0.5,
-                    depthTest: false,
-                    emissive: 0x4B0082,
-                    emissiveIntensity: 0.2
+                    depthTest: false
                 });
                 
                 // Body
-                const bodyGeo = new THREE.BoxGeometry(0.2, 0.3, 1.0);
-                const bodyMesh = new THREE.Mesh(bodyGeo, metal);
+                const bodyGeo = new THREE.BoxGeometry(0.2, 0.4, 1.0);
+                const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
                 bodyMesh.position.z = -1.0;
 
-                // Barrel
-                const barrelGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 16);
-                const barrelMesh = new THREE.Mesh(barrelGeo, metal);
-                barrelMesh.rotation.x = Math.PI / 2;
-                barrelMesh.position.z = -1.9;
-                
-                // Tank
-                const tankGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.8, 32);
-                const tankMesh = new THREE.Mesh(tankGeo, tankMat);
-                tankMesh.position.set(0, 0, -0.8);
+                // Nozzle
+                const nozzleGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
+                const nozzleMesh = new THREE.Mesh(nozzleGeo, nozzleMat);
+                nozzleMesh.rotation.x = Math.PI / 2;
+                nozzleMesh.position.z = -1.6;
                 
                 this.visualShrinkGun.add(bodyMesh);
-                this.visualShrinkGun.add(barrelMesh);
-                this.visualShrinkGun.add(tankMesh);
+                this.visualShrinkGun.add(nozzleMesh);
                 
                 this.visualShrinkGun.position.set(0.4, -0.5, -0.5);
                 this.visualShrinkGun.visible = false; // Hidden by default
@@ -1092,7 +1076,7 @@
 
                 // Stock
                 const stockGeo = new THREE.BoxGeometry(0.2, 0.2, 0.8);
-                const stockMesh = new THREE.Mesh(stockGeo, metal); // FIX: Was missing material
+                const stockMesh = new THREE.Mesh(stockGeo, metal);
                 stockMesh.position.set(0, -0.1, -0.2);
                 
                 this.visualGrenadeLauncher.add(barrelMesh);
@@ -1192,12 +1176,470 @@
                 this.visualShotgun.visible = false;
             },
             
+            createVisualAK47() {
+                this.visualAK47 = new THREE.Group();
+                this.visualAK47.renderOrder = 999;
+                
+                const metal = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.9,
+                    roughness: 0.4,
+                    depthTest: false
+                });
+                
+                const wood = new THREE.MeshStandardMaterial({
+                    color: 0x8B4513, // SaddleBrown
+                    roughness: 0.8,
+                    depthTest: false
+                });
+
+                // Body
+                const bodyGeo = new THREE.BoxGeometry(0.15, 0.25, 1.2);
+                const bodyMesh = new THREE.Mesh(bodyGeo, metal);
+                bodyMesh.position.z = -1.0;
+                
+                // Barrel
+                const barrelGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.0, 16);
+                const barrelMesh = new THREE.Mesh(barrelGeo, metal);
+                barrelMesh.rotation.x = Math.PI / 2;
+                barrelMesh.position.z = -2.1;
+
+                // Stock
+                const stockGeo = new THREE.BoxGeometry(0.15, 0.2, 0.8);
+                const stockMesh = new THREE.Mesh(stockGeo, wood);
+                stockMesh.position.z = -0.2;
+                
+                // Magazine
+                const magGeo = new THREE.BoxGeometry(0.1, 0.4, 0.3);
+                const magMesh = new THREE.Mesh(magGeo, metal);
+                magMesh.position.set(0, -0.3, -1.0);
+                
+                this.visualAK47.add(bodyMesh);
+                this.visualAK47.add(barrelMesh);
+                this.visualAK47.add(stockMesh);
+                this.visualAK47.add(magMesh);
+                
+                this.visualAK47.position.set(0.4, -0.5, -0.5);
+                this.visualAK47.visible = false;
+            },
+            
+            createVisualMinigun() {
+                this.visualMinigun = new THREE.Group();
+                this.visualMinigun.renderOrder = 999;
+                
+                const metal = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.9,
+                    roughness: 0.4,
+                    depthTest: false
+                });
+                
+                const darkMetal = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.9,
+                    roughness: 0.3,
+                    depthTest: false
+                });
+
+                // Main Body (Cylinder)
+                const bodyGeo = new THREE.CylinderGeometry(0.15, 0.15, 1.0, 16);
+                const bodyMesh = new THREE.Mesh(bodyGeo, metal);
+                bodyMesh.rotation.x = Math.PI / 2;
+                bodyMesh.position.z = -1.0;
+                this.visualMinigun.add(bodyMesh);
+
+                // Top carry handle
+                const handleGeo = new THREE.BoxGeometry(0.05, 0.1, 0.5);
+                const handleMesh = new THREE.Mesh(handleGeo, darkMetal);
+                handleMesh.position.set(0, 0.2, -0.8);
+                this.visualMinigun.add(handleMesh);
+                
+                // Grip
+                const gripGeo = new THREE.BoxGeometry(0.1, 0.3, 0.1);
+                const gripMesh = new THREE.Mesh(gripGeo, darkMetal);
+                gripMesh.position.set(0, -0.25, -0.8);
+                this.visualMinigun.add(gripMesh);
+
+                // New Single Barrel
+                const barrelGeo = new THREE.CylinderGeometry(0.1, 0.1, 1.4, 16); // Single, large barrel
+                const barrelMesh = new THREE.Mesh(barrelGeo, darkMetal);
+                barrelMesh.rotation.x = Math.PI / 2;
+                barrelMesh.position.z = -2.2; // Positioned in front
+                this.visualMinigun.add(barrelMesh);
+                
+                // REMOVED barrelGroup, loop, and clamps
+                
+                this.visualMinigun.position.set(0.4, -0.5, -0.5);
+                this.visualMinigun.visible = false;
+            },
+            
+            createVisualM1Garand() {
+                this.visualM1Garand = new THREE.Group();
+                this.visualM1Garand.renderOrder = 999;
+                
+                const metal = new THREE.MeshStandardMaterial({
+                    color: 0x444444,
+                    metalness: 0.9,
+                    roughness: 0.5,
+                    depthTest: false
+                });
+                
+                const wood = new THREE.MeshStandardMaterial({
+                    color: 0x8B4513, // SaddleBrown
+                    roughness: 0.8,
+                    depthTest: false
+                });
+
+                // Barrel
+                const barrelGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.0, 16);
+                const barrelMesh = new THREE.Mesh(barrelGeo, metal);
+                barrelMesh.rotation.x = Math.PI / 2;
+                barrelMesh.position.z = -1.8;
+                
+                // Stock/Body
+                const stockGeo = new THREE.BoxGeometry(0.15, 0.2, 2.0);
+                const stockMesh = new THREE.Mesh(stockGeo, wood);
+                stockMesh.position.z = -1.0;
+                
+                this.visualM1Garand.add(barrelMesh);
+                this.visualM1Garand.add(stockMesh);
+                
+                this.visualM1Garand.position.set(0.4, -0.5, -0.5);
+                this.visualM1Garand.visible = false;
+            },
+            
+            createVisualCrowbar() {
+                this.visualCrowbar = new THREE.Group();
+                this.visualCrowbar.renderOrder = 999;
+                
+                const metal = new THREE.MeshStandardMaterial({
+                    color: 0xDD2200, // Red
+                    metalness: 0.8,
+                    roughness: 0.4,
+                    depthTest: false
+                });
+
+                // Main bar
+                const barGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.8, 12); // A bit longer
+                const barMesh = new THREE.Mesh(barGeo, metal);
+                barMesh.position.z = -1.4; // Pushed back a bit
+                this.visualCrowbar.add(barMesh);
+
+                // Hook End (More pronounced curve)
+                const hookPoints = [
+                    new THREE.Vector3(0, 0.9, -1.4),  // Connects to bar
+                    new THREE.Vector3(0, 1.0, -1.55), // Curves up and back
+                    new THREE.Vector3(0, 0.8, -1.6)   // Tip of the hook
+                ];
+                const hookCurve = new THREE.CatmullRomCurve3(hookPoints);
+                const hookGeo = new THREE.TubeGeometry(hookCurve, 8, 0.05, 8, false);
+                const hookMesh = new THREE.Mesh(hookGeo, metal);
+                this.visualCrowbar.add(hookMesh);
+                
+                // Chisel End
+                const chiselGeo = new THREE.BoxGeometry(0.1, 0.3, 0.05); // A flat prybar shape
+                const chiselMesh = new THREE.Mesh(chiselGeo, metal);
+                chiselMesh.position.set(0, -1.05, -1.4); // Attached to the bottom
+                chiselMesh.rotation.x = -0.3; // Angled
+                this.visualCrowbar.add(chiselMesh);
+                
+                this.visualCrowbar.position.set(0.4, -0.8, -0.5);
+                this.visualCrowbar.rotation.x = 0.2;
+                this.visualCrowbar.visible = false;
+            },
+            
+            createVisualGlock() {
+                this.visualGlock = new THREE.Group();
+                this.visualGlock.renderOrder = 999;
+                
+                const metal = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.9,
+                    roughness: 0.4,
+                    depthTest: false
+                });
+                
+                // Slide
+                const slideGeo = new THREE.BoxGeometry(0.15, 0.2, 0.7);
+                const slideMesh = new THREE.Mesh(slideGeo, metal);
+                slideMesh.position.z = -1.0;
+                
+                // Grip
+                const gripGeo = new THREE.BoxGeometry(0.15, 0.4, 0.2);
+                const gripMesh = new THREE.Mesh(gripGeo, metal);
+                gripMesh.position.set(0, -0.2, -0.8);
+                gripMesh.rotation.x = 0.2; // Angle
+                
+                this.visualGlock.add(slideMesh);
+                this.visualGlock.add(gripMesh);
+                
+                this.visualGlock.position.set(0.4, -0.4, -0.5);
+                this.visualGlock.visible = false;
+            },
+            
+            createVisualRevolver() { // Renamed from Luger
+                this.visualRevolver = new THREE.Group();
+                this.visualRevolver.renderOrder = 999;
+                
+                const metal = new THREE.MeshStandardMaterial({
+                    color: 0xAAAAAA,
+                    metalness: 0.9,
+                    roughness: 0.3,
+                    depthTest: false
+                });
+                
+                const gripMat = new THREE.MeshStandardMaterial({
+                    color: 0x8B4513, // Wood
+                    roughness: 0.7,
+                    depthTest: false
+                });
+
+                // Frame
+                const frameGeo = new THREE.BoxGeometry(0.1, 0.2, 0.5);
+                const frameMesh = new THREE.Mesh(frameGeo, metal);
+                frameMesh.position.z = -1.0;
+                
+                // Barrel
+                const barrelGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 16);
+                const barrelMesh = new THREE.Mesh(barrelGeo, metal);
+                barrelMesh.rotation.x = Math.PI / 2;
+                barrelMesh.position.z = -1.6;
+                
+                // Cylinder
+                const cylGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.4, 6);
+                const cylMesh = new THREE.Mesh(cylGeo, metal);
+                cylMesh.position.z = -1.0;
+                
+                // Grip
+                const gripGeo = new THREE.BoxGeometry(0.1, 0.4, 0.2);
+                const gripMesh = new THREE.Mesh(gripGeo, gripMat);
+                gripMesh.position.set(0, -0.25, -0.8);
+                gripMesh.rotation.x = 0.3;
+                
+                this.visualRevolver.add(frameMesh);
+                this.visualRevolver.add(barrelMesh);
+                this.visualRevolver.add(cylMesh);
+                this.visualRevolver.add(gripMesh);
+                
+                this.visualRevolver.position.set(0.4, -0.4, -0.5);
+                this.visualRevolver.visible = false;
+            },
+            
+            createVisualM3GreaseGun() { // Renamed from MP40
+                this.visualM3GreaseGun = new THREE.Group();
+                this.visualM3GreaseGun.renderOrder = 999;
+                
+                const metal = new THREE.MeshStandardMaterial({
+                    color: 0x444444,
+                    metalness: 0.9,
+                    roughness: 0.5,
+                    depthTest: false
+                });
+                
+                // Body
+                const bodyGeo = new THREE.CylinderGeometry(0.1, 0.1, 1.0, 16);
+                const bodyMesh = new THREE.Mesh(bodyGeo, metal);
+                bodyMesh.rotation.x = Math.PI / 2;
+                bodyMesh.position.z = -1.0;
+
+                // Barrel
+                const barrelGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.6, 16);
+                const barrelMesh = new THREE.Mesh(barrelGeo, metal);
+                barrelMesh.rotation.x = Math.PI / 2;
+                barrelMesh.position.z = -1.8;
+                
+                // Grip
+                const gripGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.4, 16);
+                const gripMesh = new THREE.Mesh(gripGeo, metal);
+                gripMesh.position.set(0, -0.3, -0.8);
+
+                // Magazine
+                const magGeo = new THREE.BoxGeometry(0.08, 0.6, 0.2);
+                const magMesh = new THREE.Mesh(magGeo, metal);
+                magMesh.position.set(0.15, -0.1, -1.2); // Side-loading
+                magMesh.rotation.z = Math.PI / 2;
+                
+                // Stock (simple wire)
+                const stockBarGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.7, 8);
+                const stockBar1 = new THREE.Mesh(stockBarGeo, metal);
+                stockBar1.position.set(-0.05, -0.05, -0.5);
+                stockBar1.rotation.x = Math.PI / 2;
+                
+                const stockBar2 = new THREE.Mesh(stockBarGeo, metal);
+                stockBar2.position.set(0.05, -0.05, -0.5);
+                stockBar2.rotation.x = Math.PI / 2;
+                
+                this.visualM3GreaseGun.add(barrelMesh);
+                this.visualM3GreaseGun.add(bodyMesh);
+                this.visualM3GreaseGun.add(gripMesh);
+                this.visualM3GreaseGun.add(magMesh);
+                this.visualM3GreaseGun.add(stockBar1);
+                this.visualM3GreaseGun.add(stockBar2);
+                
+                this.visualM3GreaseGun.position.set(0.4, -0.5, -0.5);
+                this.visualM3GreaseGun.visible = false;
+            },
+            
+            createVisualTimeFreezeGun() { // Renamed
+                this.visualTimeFreezeGun = new THREE.Group();
+                this.visualTimeFreezeGun.renderOrder = 999;
+                
+                const bodyMat = new THREE.MeshStandardMaterial({
+                    color: 0x00FF00, // Bright Green
+                    metalness: 0.7,
+                    roughness: 0.4,
+                    depthTest: false
+                });
+                
+                // Body
+                const bodyGeo = new THREE.BoxGeometry(0.2, 0.3, 0.4);
+                const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+                bodyMesh.position.z = -0.8;
+                
+                // Antenna
+                const antGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8);
+                const antMesh = new THREE.Mesh(antGeo, bodyMat);
+                antMesh.rotation.x = Math.PI / 2;
+                antMesh.position.z = -1.2;
+                
+                this.visualTimeFreezeGun.add(bodyMesh);
+                this.visualTimeFreezeGun.add(antMesh);
+                
+                this.visualTimeFreezeGun.position.set(0.4, -0.5, -0.5);
+                this.visualTimeFreezeGun.visible = false;
+            },
+            
+            createVisualBowlingBall() {
+                this.visualBowlingBall = new THREE.Group();
+                this.visualBowlingBall.renderOrder = 999;
+                
+                const ballMat = new THREE.MeshStandardMaterial({
+                    color: 0x111111, // Dark black
+                    metalness: 0.1,
+                    roughness: 0.1,
+                    depthTest: false
+                });
+
+                const radius = Physics.CONSTANTS.WEAPON_PROJECTILE_RADIUS[24]; 
+                const ballGeo = new THREE.SphereGeometry(radius, 20, 20); 
+                const ballMesh = new THREE.Mesh(ballGeo, ballMat);
+                
+                this.visualBowlingBall.add(ballMesh);
+                
+                this.visualBowlingBall.position.set(0.5, -0.7, -1.5); // Low and to the side
+                this.visualBowlingBall.visible = false;
+            },
+            
+            createVisualMP5() {
+                this.visualMP5 = new THREE.Group();
+                this.visualMP5.renderOrder = 999;
+                
+                const metal = new THREE.MeshStandardMaterial({
+                    color: 0x222222, // Dark metal
+                    metalness: 0.9,
+                    roughness: 0.4,
+                    depthTest: false
+                });
+
+                // Receiver
+                const bodyGeo = new THREE.BoxGeometry(0.18, 0.2, 0.9); // Made it a bit longer
+                const bodyMesh = new THREE.Mesh(bodyGeo, metal);
+                bodyMesh.position.z = -1.0;
+                this.visualMP5.add(bodyMesh);
+
+                // Handguard
+                const hgGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.6, 16); // Thicker handguard
+                const hgMesh = new THREE.Mesh(hgGeo, metal);
+                hgMesh.rotation.x = Math.PI / 2;
+                hgMesh.position.z = -1.65; // Moved forward
+                this.visualMP5.add(hgMesh);
+                
+                // Barrel
+                const barrelGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.2, 16);
+                const barrelMesh = new THREE.Mesh(barrelGeo, metal);
+                barrelMesh.rotation.x = Math.PI / 2;
+                barrelMesh.position.z = -2.05; // Sticking out of handguard
+                this.visualMP5.add(barrelMesh);
+                
+                // Grip
+                const gripGeo = new THREE.BoxGeometry(0.12, 0.4, 0.2); // Taller grip
+                const gripMesh = new THREE.Mesh(gripGeo, metal);
+                gripMesh.position.set(0, -0.25, -0.8);
+                gripMesh.rotation.x = 0.2; // More angle
+                this.visualMP5.add(gripMesh);
+                
+                // Magazine (Curved)
+                const magGeo = new THREE.BoxGeometry(0.1, 0.6, 0.25);
+                const magMesh = new THREE.Mesh(magGeo, metal);
+                magMesh.position.set(0, -0.2, -1.2);
+                magMesh.rotation.x = -0.3; // Curved angle
+                this.visualMP5.add(magMesh);
+                
+                // Stock (Retracted)
+                const stockBarGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.7, 8);
+                const stockBar1 = new THREE.Mesh(stockBarGeo, metal);
+                stockBar1.position.set(-0.07, 0.05, -0.6);
+                stockBar1.rotation.x = Math.PI / 2;
+                this.visualMP5.add(stockBar1);
+                
+                const stockBar2 = new THREE.Mesh(stockBarGeo, metal);
+                stockBar2.position.set(0.07, 0.05, -0.6);
+                stockBar2.rotation.x = Math.PI / 2;
+                this.visualMP5.add(stockBar2);
+
+                const stockEndGeo = new THREE.BoxGeometry(0.16, 0.18, 0.05);
+                const stockEnd = new THREE.Mesh(stockEndGeo, metal);
+                stockEnd.position.set(0, 0.05, -0.25);
+                this.visualMP5.add(stockEnd);
+                
+                // Sights
+                const rearSightGeo = new THREE.BoxGeometry(0.05, 0.05, 0.05);
+                const rearSight = new THREE.Mesh(rearSightGeo, metal);
+                rearSight.position.set(0, 0.2, -0.5);
+                this.visualMP5.add(rearSight);
+                
+                const frontSightGeo = new THREE.BoxGeometry(0.03, 0.05, 0.03);
+                const frontSight = new THREE.Mesh(frontSightGeo, metal);
+                frontSight.position.set(0, 0.15, -1.9);
+                this.visualMP5.add(frontSight);
+                
+                this.visualMP5.position.set(0.4, -0.5, -0.5);
+                this.visualMP5.visible = false;
+            },
+            
+            createVisualTacticalMissile() {
+                this.visualTacticalMissile = new THREE.Group();
+                this.visualTacticalMissile.renderOrder = 999;
+                
+                const bodyMat = new THREE.MeshStandardMaterial({
+                    color: 0xDD2200, // Red
+                    metalness: 0.7,
+                    roughness: 0.4,
+                    depthTest: false
+                });
+                
+                // Body
+                const bodyGeo = new THREE.BoxGeometry(0.2, 0.3, 0.4);
+                const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+                bodyMesh.position.z = -0.8;
+                
+                // Lens
+                const lensGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.1, 16);
+                const lensMat = new THREE.MeshStandardMaterial({ color: 0x0000AA, roughness: 0.2, depthTest: false });
+                const lensMesh = new THREE.Mesh(lensGeo, lensMat);
+                lensMesh.rotation.x = Math.PI / 2;
+                lensMesh.position.z = -1.05;
+                
+                this.visualTacticalMissile.add(bodyMesh);
+                this.visualTacticalMissile.add(lensMesh);
+                
+                this.visualTacticalMissile.position.set(0.4, -0.5, -0.5);
+                this.visualTacticalMissile.visible = false;
+            },
+            
             // New function for muzzle flash
             showMuzzleFlash() {
                 if (!this.muzzleFlash) return;
-                
-                // Attach to active gun? Simplified: Just show the one we have
-                // Note: For AK47 we might need to position it differently, but reusing is fine for now if invisible
                 
                 // Show, rotate slightly, and hide
                 this.muzzleFlash.visible = true;
@@ -1258,6 +1700,22 @@
                 }, 150);
             },
             
+            // New function for crowbar swing
+            swingCrowbar() {
+                if (!this.visualCrowbar) return;
+
+                // Simple swing animation (same as hammer)
+                this.visualCrowbar.position.z -= 0.7;
+                this.visualCrowbar.rotation.x = -0.5;
+
+                setTimeout(() => {
+                    if (this.visualCrowbar) {
+                        this.visualCrowbar.position.z += 0.7;
+                        this.visualCrowbar.rotation.x = 0.2;
+                    }
+                }, 150);
+            },
+            
             // New function for soundwave effect
             showSoundwaveEffect() {
                 if (!this.soundwaveEffect) return;
@@ -1291,15 +1749,11 @@
                 this.laserBeam.geometry.setFromPoints([threeStart, threeEnd]);
                 this.laserBeam.visible = true;
                 
-                setTimeout(() => {
-                    if (this.laserBeam) {
-                        this.laserBeam.visible = false;
-                    }
-                }, 100); // 100ms beam
+                // REMOVED setTimeout to make beam continuous
             },
             
             // Creates a visual explosion effect
-            createExplosion(position) {
+            createExplosion(position, scale = 1) { // Added scale
                 const explosionGeo = new THREE.SphereGeometry(0.1, 32, 32);
                 const explosionMat = new THREE.MeshBasicMaterial({
                     color: 0xffa500, // Orange
@@ -1307,6 +1761,7 @@
                     opacity: 0.8
                 });
                 const explosion = new THREE.Mesh(explosionGeo, explosionMat);
+                explosion.scale.set(scale, scale, scale); // Set initial scale
                 explosion.position.copy(position);
                 this.scene.add(explosion);
                 this.explosions.push(explosion);
@@ -1354,11 +1809,10 @@
                 PLAYER_RADIUS: 0.5,
                 PLAYER_MASS: 5,
                 
-                // 16 weapons: [C, MG, RPG, G, H, A, L, S, B, S, S, B, SG, GL, Bow, Shotgun, AK47]
-                // Added AK47 at index 16
-                WEAPON_PROJECTILE_MASS: [10, 0.5, 20, 0.1, 0, 0, 0, 0, 5, 2, 1, 0, 0.1, 8, 2, 0.5, 0.8],
-                WEAPON_PROJECTILE_RADIUS: [0.5, 0.1, 0.8, 0.4, 0, 0, 0, 0, 0.5, 0.2, 0.3, 0, 0.2, 0.6, 0.1, 0.15, 0.12],
-                WEAPON_FIRE_SPEED: [60, 120, 40, 15, 0, 0, 0, 0, 45, 90, 30, 0, 30, 25, 70, 90, 130], 
+                // [C, MG, RPG, G, H, A, L, S, B, S, S, B, SG, GL, Bow, SG, AK, MGun, M1, CB, G, Rev, M3, TF, Ball, MP5, TM]
+                WEAPON_PROJECTILE_MASS: [10, 0.5, 20, 0.1, 0, 0, 0, 0, 5, 2, 1, 0, 0.1, 8, 2, 0.2, 0.6, 0.3, 1.0, 0, 0.4, 0.8, 0.5, 0, 30, 0.4, 40],
+                WEAPON_PROJECTILE_RADIUS: [0.5, 0.1, 0.8, 0.4, 0, 0, 0, 0, 0.5, 0.2, 0.3, 0, 0.2, 0.6, 0.1, 0.1, 0.12, 0.08, 0.15, 0, 0.1, 0.13, 0.1, 0, 0.8, 0.1, 1.0],
+                WEAPON_FIRE_SPEED: [60, 120, 40, 15, 0, 0, 0, 0, 45, 90, 30, 0, 30, 50, 70, 90, 110, 130, 150, 0, 100, 90, 110, 0, 20, 125, 80], 
                 
                 JUMP_VELOCITY: 8,
                 
@@ -1390,7 +1844,7 @@
 
             // Checks if the player is standing on the ground
             checkGroundStatus() {
-                if (!this.playerBody) { 
+                if (!this.playerBody || Game.state.isTimeFrozen) { // Renamed
                     Game.state.canJump = false;
                     return;
                 }
@@ -1514,8 +1968,10 @@
             loadLevel(levelIndex) {
                 this.resetSimulation();
                 Controls.resetPlayerState();
+                Game.state.isTimeFrozen = false; // Renamed
 
                 switch(levelIndex) {
+                    // REMOVED case -2 and case -1 (Editor)
                     case 0: this.createBuilding_Level1(); break;
                     case 1: this.createBuilding_Level2(); break;
                     case 2: this.createBuilding_Level3(); break;
@@ -1546,6 +2002,8 @@
                     if (item.mesh) Graphics.scene.remove(item.mesh);
                 }
                 Game.projectiles = [];
+                
+                // Reset portals (REMOVED)
             },
 
             // --- Level Definitions (Levels 1-9) ---
@@ -1937,6 +2395,9 @@
                 infoTitle: null,
                 controlSelect: null,
                 levelGrid: null,
+                // editorLevelButtons: null, (REMOVED)
+                // createLevelBtn: null, (REMOVED)
+                // loadCustomBtn: null, (REMOVED)
                 changeControlsBtn: null,
                 crosshair: null,
                 gameUI: null,
@@ -1962,10 +2423,16 @@
                 this.dom.infoTitle = document.getElementById('info-title');
                 this.dom.controlSelect = document.getElementById('control-scheme-select');
                 this.dom.levelGrid = document.getElementById('level-grid');
+                // REMOVED editorLevelButtons
+                // REMOVED createLevelBtn
+                // REMOVED loadCustomBtn
                 this.dom.changeControlsBtn = document.getElementById('change-controls-btn');
                 this.dom.crosshair = document.getElementById('crosshair');
                 this.dom.gameUI = document.getElementById('game-ui');
                 this.dom.editorUI = document.getElementById('editor-ui'); // FIX: Get element
+                // REMOVED saveBtn
+                // REMOVED testBtn
+                // REMOVED exitEditorBtn
                 this.dom.resetBtn = document.getElementById('reset-btn');
                 this.dom.menuBtn = document.getElementById('menu-btn');
                 this.dom.mobileControls = document.getElementById('mobile-controls');
@@ -1981,9 +2448,12 @@
                 this.dom.backBtn = document.getElementById('back-btn');
 
                 this.bindGameButtons();
+                // REMOVED this.bindEditorButtons();
                 this.createLevelMenu();
                 this.createXtraLevelMenu();
             },
+            
+            // REMOVED bindEditorButtons()
             
             // Binds in-game buttons (Reset, Menu)
             bindGameButtons() {
@@ -1993,8 +2463,8 @@
                         Game.startLevel(Game.state.currentLevel); // Reload
                     }
                 });
-                this.dom.menuBtn.addEventListener('click', () => Game.backToMenu()); // FIX: Use arrow function
-                this.dom.swapBtn.addEventListener('click', Controls.swapWeapon);
+                this.dom.menuBtn.addEventListener('click', () => Game.backToMenu());
+                this.dom.swapBtn.addEventListener('click', Controls.onSwapPress); // Changed
                 
                 this.dom.backBtn.addEventListener('click', () => this.showLevelMenu()); // Removed 'true'
                 this.dom.backBtn.addEventListener('touchend', (e) => { e.preventDefault(); this.showLevelMenu(); }); // Removed 'true'
@@ -2010,9 +2480,9 @@
                     e.preventDefault();
                     Game.backToMenu();
                 });
-                this.dom.swapBtn.addEventListener('touchend', (e) => {
+                this.dom.swapBtn.addEventListener('touchend', (e) => { // Changed
                     e.preventDefault();
-                    Controls.swapWeapon();
+                    Controls.onSwapPress();
                 });
             },
 
@@ -2028,6 +2498,7 @@
                     this.dom.infoTitle.innerText = "Select Controls";
                     this.dom.controlSelect.style.display = 'flex';
                     this.dom.levelGrid.style.display = 'none';
+                    // REMOVED editorLevelButtons
                     this.dom.changeControlsBtn.style.display = 'none';
                 });
 
@@ -2086,6 +2557,7 @@
                 this.dom.levelGrid.style.display = 'grid';
                 this.dom.xtraLevelGrid.style.display = 'none';
                 this.dom.changeControlsBtn.style.display = 'block';
+                // REMOVED editorLevelButtons logic
             },
             
             showXtraLevelsMenu() {
@@ -2094,6 +2566,7 @@
                 this.dom.levelGrid.style.display = 'none';
                 this.dom.xtraLevelGrid.style.display = 'grid';
                 this.dom.changeControlsBtn.style.display = 'none';
+                // REMOVED editorLevelButtons
             },
 
             // Shows the main menu
@@ -2110,6 +2583,7 @@
                 this.dom.info.classList.add('hidden');
                 this.dom.crosshair.style.display = 'block';
 
+                // REMOVED isEditorMode check
                 if (this.dom.editorUI) this.dom.editorUI.style.display = 'none'; // FIX: Check if not null
                 this.dom.gameUI.classList.remove('game-ui-hidden');
 
@@ -2123,14 +2597,15 @@
             updateWeaponDisplay() {
                 const weaponNames = [
                     "CANNON", "MACHINE GUN", "RPG", "GRENADE", "HAMMER", "AXE", "LASER", 
-                    "SOUNDWAVE", "BEAN GUN", "SLINGSHOT", "SNOWBALL", "BAT", "SHRINKGUN", // Renamed
-                    "GRENADE LAUNCHER", "BOW", "SHOTGUN", "AK 47"
+                    "SOUNDWAVE", "BEAN GUN", "SLINGSHOT", "SNOWBALL", "BAT", "SHRINK GUN",
+                    "GRENADE LAUNCHER", "BOW", "SHOTGUN", "AK-47", "MINIGUN", "M1 GARAND", "CROWBAR",
+                    "GLOCK", "REVOLVER", "M3 GREASE GUN", "TIME FREEZE", "BOWLING BALL", "MP5", "TACTICAL MISSILE"
                 ];
                 if (this.dom.weaponDisplay) {
                     this.dom.weaponDisplay.innerText = weaponNames[Game.state.currentWeapon] || "CANNON";
                 }
                 
-                if (Graphics.visualShotgun) { // Check for last weapon
+                if (Graphics.visualTacticalMissile) { // Check for last weapon
                     Graphics.visualCannon.visible = (Game.state.currentWeapon === 0);
                     Graphics.visualMachineGun.visible = (Game.state.currentWeapon === 1);
                     Graphics.visualRPG.visible = (Game.state.currentWeapon === 2);
@@ -2143,21 +2618,31 @@
                     Graphics.visualSlingshot.visible = (Game.state.currentWeapon === 9);
                     Graphics.visualSnowball.visible = (Game.state.currentWeapon === 10);
                     Graphics.visualBaseballBat.visible = (Game.state.currentWeapon === 11);
-                    Graphics.visualShrinkGun.visible = (Game.state.currentWeapon === 12); // Renamed
+                    Graphics.visualShrinkGun.visible = (Game.state.currentWeapon === 12);
                     Graphics.visualGrenadeLauncher.visible = (Game.state.currentWeapon === 13);
                     Graphics.visualBow.visible = (Game.state.currentWeapon === 14);
                     Graphics.visualShotgun.visible = (Game.state.currentWeapon === 15);
-                    Graphics.visualAK47.visible = (Game.state.currentWeapon === 16); // Added
+                    Graphics.visualAK47.visible = (Game.state.currentWeapon === 16);
+                    Graphics.visualMinigun.visible = (Game.state.currentWeapon === 17);
+                    Graphics.visualM1Garand.visible = (Game.state.currentWeapon === 18);
+                    Graphics.visualCrowbar.visible = (Game.state.currentWeapon === 19);
+                    Graphics.visualGlock.visible = (Game.state.currentWeapon === 20);
+                    Graphics.visualRevolver.visible = (Game.state.currentWeapon === 21);
+                    Graphics.visualM3GreaseGun.visible = (Game.state.currentWeapon === 22);
+                    Graphics.visualTimeFreezeGun.visible = (Game.state.currentWeapon === 23);
+                    Graphics.visualBowlingBall.visible = (Game.state.currentWeapon === 24);
+                    Graphics.visualMP5.visible = (Game.state.currentWeapon === 25);
+                    Graphics.visualTacticalMissile.visible = (Game.state.currentWeapon === 26);
                 }
             }
         };
 
-        /**
+/**
          * @object Controls
          * Manages all user input for PC, Mobile, and Gamepad.
          */
         const Controls = {
-            gamepadButtonCooldown: { fire: 0, reset: 0, menu: 0, jump: 0, swap: 0 },
+            gamepadButtonCooldown: { fire: 0, altFire: 0, reset: 0, menu: 0, jump: 0, swap: 0 }, // Added altFire
             joystickMove: {
                 active: false,
                 touchId: null,
@@ -2176,9 +2661,8 @@
                 GAMEPAD_DEADZONE: 0.15,
                 GAMEPAD_AIM_SPEED: 50,
                 PLAYER_MOVE_SPEED: 5,
-                // [C, MG, RPG, G, H, A, L, S, B, S, S, B, SG, GL, Bow, Shotgun, AK47]
-                // AK47 added: 120ms cooldown (slower than MG)
-                WEAPON_COOLDOWNS: [1, 50, 1500, 1000, 400, 350, 500, 1200, 2000, 300, 200, 300, 30, 1200, 800, 800, 120],
+                // [C, MG, RPG, G, H, A, L, S, B, S, S, B, SG, GL, Bow, SG, AK, MGun, M1, CB, G, Rev, M3, TF, Ball, MP5, TM]
+                WEAPON_COOLDOWNS: [1, 50, 1500, 1000, 400, 350, 250, 1200, 2000, 300, 200, 300, 30, 1200, 800, 800, 120, 25, 600, 1000, 300, 700, 80, 500, 1500, 70, 5000],
                 GAMEPAD_BUTTON_COOLDOWN: 0.5
             },
 
@@ -2207,13 +2691,13 @@
             },
 
             resetMovement() {
-                 Game.state.movement = { forward: 0, backward: 0, left: 0, right: 0 }; // Removed jump/crouch
+                 Game.state.movement = { forward: 0, backward: 0, left: 0, right: 0, jump: 0, crouch: 0 }; // Added jump/crouch
             },
 
             // --- 1. PC Controls (Mouse/Keyboard) ---
             initPointerLock() {
                 const element = Graphics.renderer.domElement;
-                // REMOVED contextmenu listener
+                element.addEventListener('contextmenu', e => e.preventDefault()); // Prevent right-click for alt-fire
                 document.addEventListener('pointerlockchange', this.onPointerLockChange.bind(this), false);
                 
                 const request = element.requestPointerLock();
@@ -2251,6 +2735,8 @@
                     }
                 }
                 
+                // REMOVED Editor Fly Toggle
+                
                 if (event.key >= '1' && event.key <= '9') {
                     const weaponIndex = parseInt(event.key, 10) - 1;
                     Controls.setWeapon(weaponIndex);
@@ -2266,9 +2752,14 @@
                     case 'a': Game.state.movement.left = 1; break;
                     case 'd': Game.state.movement.right = 1; break;
                     case ' ': 
-                        Controls.jump(); // Removed editor check
+                        if (Game.state.isTimeFrozen) Game.state.movement.jump = 1; // Renamed
+                        else Controls.jump(); 
                         break;
-                    case 'e': Controls.swapWeapon(); break;
+                    case 'shift': 
+                         if (Game.state.isTimeFrozen) Game.state.movement.crouch = 1; // Renamed
+                        break;
+                    case 'e': Controls.onSwapPress(); break; // Changed
+                    case 'q': Controls.scrollWeapon(-1); break; // Added
                 }
             },
     
@@ -2278,6 +2769,8 @@
                     case 's': Game.state.movement.backward = 0; break;
                     case 'a': Game.state.movement.left = 0; break;
                     case 'd': Game.state.movement.right = 0; break;
+                    case ' ': Game.state.movement.jump = 0; break;
+                    case 'shift': Game.state.movement.crouch = 0; break;
                 }
             },
 
@@ -2287,6 +2780,7 @@
             
             onPCMouseWheel(event) {
                 event.preventDefault(); // Stop page scrolling
+                // REMOVED isEditorMode check
                 
                 if (event.deltaY < 0) {
                     Controls.scrollWeapon(-1); // Scroll up
@@ -2296,50 +2790,64 @@
             },
             
             onPCFireDown(event) {
-                Game.state.isFireButtonDown = true;
-                // AK47 (16) is auto like MG (1) and Shrinkgun (12)
-                if (Game.state.currentWeapon !== 1 && Game.state.currentWeapon !== 12 && Game.state.currentWeapon !== 16) { // Fire semi-auto
-                    Controls.fireWeapon();
+                if (event.button === 0) { // Left Click
+                    Game.state.isFireButtonDown = true;
+                    const w = Game.state.currentWeapon;
+                    // Fire semi-auto (NOT full-auto weapons)
+                    if (w !== 1 && w !== 6 && w !== 12 && w !== 16 && w !== 17 && w !== 19 && w !== 22 && w !== 25) { 
+                        Controls.fireWeapon();
+                    }
+                } else if (event.button === 2) { // Right Click
+                    event.preventDefault();
+                    Controls.altFireWeapon(); // New function call
                 }
             },
 
-            onPCFireUp() {
-                Game.state.isFireButtonDown = false;
+            onPCFireUp(event) {
+                if (event.button === 0) { // Left Click
+                    Game.state.isFireButtonDown = false;
+                    if (Game.state.currentWeapon === 6) { // Stop laser
+                        if (Graphics.laserBeam) Graphics.laserBeam.visible = false;
+                    }
+                }
             },
 
             // --- 2. Mobile Controls (Touch) ---
             initMobileControls() {
-                // ... (omitted for brevity, editor not supported on mobile)
-                // Re-bind listeners if needed for restart
-                UI.dom.joystickMoveArea.addEventListener('touchstart', this.onJoystickMoveStart.bind(this), { passive: false });
-                UI.dom.joystickMoveArea.addEventListener('touchmove', this.onJoystickMoveMove.bind(this), { passive: false });
-                UI.dom.joystickMoveArea.addEventListener('touchend', this.onJoystickMoveEnd.bind(this), { passive: false });
+                UI.dom.fireButton.addEventListener('touchstart', this.onMobileFireDown, false);
+                UI.dom.fireButton.addEventListener('touchend', this.onMobileFireUp, false);
+                UI.dom.jumpButton.addEventListener('touchstart', this.onMobileJump, false);
+                UI.dom.swapButton.addEventListener('touchstart', this.onMobileSwap, false); // Changed
                 
-                UI.dom.aimArea.addEventListener('touchstart', this.onAimStart.bind(this), { passive: false });
-                UI.dom.aimArea.addEventListener('touchmove', this.onAimMove.bind(this), { passive: false });
-                UI.dom.aimArea.addEventListener('touchend', this.onAimEnd.bind(this), { passive: false });
+                UI.dom.joystickMoveArea.addEventListener('touchstart', this.onJoystickMoveStart.bind(this), false);
+                UI.dom.joystickMoveArea.addEventListener('touchmove', this.onJoystickMoveMove.bind(this), false);
+                UI.dom.joystickMoveArea.addEventListener('touchend', this.onJoystickMoveEnd.bind(this), false);
                 
-                UI.dom.fireButton.addEventListener('touchstart', this.onMobileFireDown.bind(this), { passive: false });
-                UI.dom.fireButton.addEventListener('touchend', this.onMobileFireUp.bind(this), { passive: false });
-                
-                UI.dom.jumpButton.addEventListener('touchstart', this.onMobileJump.bind(this), { passive: false });
-                UI.dom.swapButton.addEventListener('touchstart', this.onMobileSwap.bind(this), { passive: false });
+                UI.dom.aimArea.addEventListener('touchstart', this.onAimStart.bind(this), false);
+                UI.dom.aimArea.addEventListener('touchmove', this.onAimMove.bind(this), false);
+                UI.dom.aimArea.addEventListener('touchend', this.onAimEnd.bind(this), false);
             },
 
             removeMobileControls() {
-                 // Clean up listeners if fully stopping
+                UI.dom.fireButton.removeEventListener('touchstart', this.onMobileFireDown, false);
+                UI.dom.fireButton.removeEventListener('touchend', this.onMobileFireUp, false);
+                UI.dom.jumpButton.removeEventListener('touchstart', this.onMobileJump, false);
+                UI.dom.swapButton.removeEventListener('touchstart', this.onMobileSwap, false); // Changed
+                
+                UI.dom.joystickMoveArea.removeEventListener('touchstart', this.onJoystickMoveStart.bind(this), false);
+                UI.dom.joystickMoveArea.removeEventListener('touchmove', this.onJoystickMoveMove.bind(this), false);
+                UI.dom.joystickMoveArea.removeEventListener('touchend', this.onJoystickMoveEnd.bind(this), false);
+                
+                UI.dom.aimArea.removeEventListener('touchstart', this.onAimStart.bind(this), false);
+                UI.dom.aimArea.removeEventListener('touchmove', this.onAimMove.bind(this), false);
+                UI.dom.aimArea.removeEventListener('touchend', this.onAimEnd.bind(this), false);
             },
             
-            onMobileFireDown(e) { 
-                e.preventDefault(); 
-                Game.state.isFireButtonDown = true; 
-                if (Game.state.currentWeapon !== 1 && Game.state.currentWeapon !== 12 && Game.state.currentWeapon !== 16) { 
-                    Controls.fireWeapon(); 
-                } 
-            },
-            onMobileFireUp(e) { e.preventDefault(); Game.state.isFireButtonDown = false; },
+            // ... (mobile handlers omitted) ...
+            onMobileFireDown(e) { e.preventDefault(); Game.state.isFireButtonDown = true; const w = Game.state.currentWeapon; if (w !== 1 && w !== 6 && w !== 12 && w !== 16 && w !== 17 && w !== 19 && w !== 22 && w !== 25) { Controls.fireWeapon(); } },
+            onMobileFireUp(e) { e.preventDefault(); Game.state.isFireButtonDown = false; if (Game.state.currentWeapon === 6) { if (Graphics.laserBeam) Graphics.laserBeam.visible = false; } },
             onMobileJump(e) { e.preventDefault(); Controls.jump(); },
-            onMobileSwap(e) { e.preventDefault(); Controls.swapWeapon(); },
+            onMobileSwap(e) { e.preventDefault(); Controls.onSwapPress(); }, // Changed
             onJoystickMoveStart(e) { e.preventDefault(); const t = e.changedTouches[0]; this.joystickMove.touchId = t.identifier; this.joystickMove.active = true; const r = UI.dom.joystickMoveArea.getBoundingClientRect(); this.joystickMove.baseX = r.left + r.width / 2; this.joystickMove.baseY = r.top + r.height / 2; },
             onJoystickMoveMove(e) { e.preventDefault(); if (!this.joystickMove.active) return; const t = Array.from(e.changedTouches).find(t => t.identifier === this.joystickMove.touchId); if (!t) return; let dx = t.clientX - this.joystickMove.baseX; let dy = t.clientY - this.joystickMove.baseY; let dist = Math.sqrt(dx*dx + dy*dy); const maxDist = this.CONSTANTS.MOBILE_JOYSTICK_MAX_DIST; if (dist > maxDist) { dx = (dx / dist) * maxDist; dy = (dy / dist) * maxDist; dist = maxDist; } UI.dom.joystickMoveKnob.style.transform = `translate(${dx}px, ${dy}px)`; const str = dist / maxDist; const th = 0.2; Game.state.movement.forward = (dy < -maxDist * th) ? str : 0; Game.state.movement.backward = (dy > maxDist * th) ? str : 0; Game.state.movement.left = (dx < -maxDist * th) ? str : 0; Game.state.movement.right = (dx > maxDist * th) ? str : 0; },
             onJoystickMoveEnd(e) { e.preventDefault(); if (!this.joystickMove.active) return; const t = Array.from(e.changedTouches).some(t => t.identifier === this.joystickMove.touchId); if (!t) return; this.joystickMove.active = false; this.joystickMove.touchId = null; UI.dom.joystickMoveKnob.style.transform = `translate(0px, 0px)`; this.resetMovement(); },
@@ -2372,19 +2880,29 @@
                 Game.state.movement.forward = (moveY < -deadzone) ? Math.abs(moveY) : 0;
                 Game.state.movement.backward = (moveY > deadzone) ? Math.abs(moveY) : 0;
                 Game.state.movement.left = (moveX < -deadzone) ? Math.abs(moveX) : 0;
-                Game.state.movement.right = (moveX > deadzone) ? Math.abs(moveX) : 0;
+                Game.state.movement.right = (moveX > deadzone) ? Math.abs(moveY) : 0;
 
                 const cooldown = this.CONSTANTS.GAMEPAD_BUTTON_COOLDOWN;
-                if (gp.buttons[7] && gp.buttons[7].pressed) {
-                    // Auto weapons: MG(1), Shrink(12), AK47(16)
-                    if (Game.state.currentWeapon === 1 || Game.state.currentWeapon === 12 || Game.state.currentWeapon === 16) { 
+                const w = Game.state.currentWeapon;
+                if (gp.buttons[7] && gp.buttons[7].pressed) { // Right Trigger
+                    if (w === 1 || w === 6 || w === 12 || w === 16 || w === 17 || w === 19 || w === 22 || w === 25) { // Full-auto weapons
                         this.fireWeapon();
                     } else if (this.gamepadButtonCooldown.fire <= 0) { // Semi-auto
                         this.fireWeapon();
                         this.gamepadButtonCooldown.fire = cooldown;
                     }
+                } else {
+                    if (Game.state.currentWeapon === 6) { // Stop laser
+                        if (Graphics.laserBeam) Graphics.laserBeam.visible = false;
+                    }
                 }
                 
+                // Left Trigger (Button 6)
+                if (gp.buttons[6] && gp.buttons[6].pressed && this.gamepadButtonCooldown.altFire <= 0) { 
+                    this.altFireWeapon();
+                    this.gamepadButtonCooldown.altFire = cooldown;
+                }
+
                 if (gp.buttons[1] && gp.buttons[1].pressed && this.gamepadButtonCooldown.jump <= 0) { 
                     this.jump();
                     this.gamepadButtonCooldown.jump = cooldown;
@@ -2394,7 +2912,7 @@
                     this.gamepadButtonCooldown.reset = cooldown;
                 }
                 if (gp.buttons[3] && gp.buttons[3].pressed && this.gamepadButtonCooldown.swap <= 0) { 
-                    this.swapWeapon();
+                    this.onSwapPress(); // Changed
                     this.gamepadButtonCooldown.swap = cooldown;
                 }
                 if (gp.buttons[9] && gp.buttons[9].pressed && this.gamepadButtonCooldown.menu <= 0) {
@@ -2407,21 +2925,28 @@
                         this.gamepadButtonCooldown[key] -= dt;
                     }
                 }
+                // ... (other buttons) ...
             },
 
             // --- 4. Shared Actions ---
+            
+            onSwapPress() {
+                // REMOVED Portal Gun Logic
+                this.swapWeapon(); // Normal swap
+            },
+            
             swapWeapon() {
                 this.scrollWeapon(1);
             },
             
             scrollWeapon(direction) {
-                const numWeapons = 17; // Total weapons (Added AK47)
+                const numWeapons = 27; // Total weapons
                 let newIndex = (Game.state.currentWeapon + direction + numWeapons) % numWeapons;
                 this.setWeapon(newIndex);
             },
             
             setWeapon(index) {
-                if (index >= 0 && index < 17) { // 17 weapons
+                if (index >= 0 && index < 27) { // 27 weapons
                     Game.state.currentWeapon = index;
                     UI.updateWeaponDisplay();
                 }
@@ -2444,16 +2969,76 @@
                     Game.state.canJump = false;
                 }
             },
+            
+            altFireWeapon() {
+                if (Game.state.isAltFiring || Game.state.isTimeFrozen) return;
+            
+                const weaponIndex = Game.state.currentWeapon;
+                
+                // Only MP5 has alt-fire
+                if (weaponIndex !== 25) {
+                    return;
+                }
+                
+                Game.state.isAltFiring = true;
+                setTimeout(() => { Game.state.isAltFiring = false; }, 2000); // 2 sec alt-fire cooldown
+
+                const radius = 0.3;
+                const mass = 4.0; // Upped from 2.0
+                const speed = 35; // Lowered from 70
+
+                // Graphics
+                const ballGeo = new THREE.SphereGeometry(radius, 12, 12);
+                const ballMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6, metalness: 0.1 });
+                const ballMesh = new THREE.Mesh(ballGeo, ballMat);
+                ballMesh.castShadow = true;
+                Graphics.scene.add(ballMesh);
+
+                // Physics
+                const ballShape = new CANNON.Sphere(radius);
+                const collisionMask = Physics.collisionGroups.DEFAULT; // Explode on blocks
+                
+                const ballBody = new CANNON.Body({ mass, shape: ballShape, collisionFilterGroup: Physics.collisionGroups.PROJECTILE, collisionFilterMask: collisionMask });
+                Physics.world.addBody(ballBody);
+
+                const { startPosition, direction } = this.getFireDirection();
+                
+                direction.y -= 0.1; // Add heavier arc
+                direction.normalize();
+                
+                startPosition.vadd(direction.scale(1.5), startPosition); // Use CANNON.Vec3 math
+                ballBody.position.copy(startPosition);
+                ballBody.velocity.set(direction.x * speed, direction.y * speed, direction.z * speed);
+                
+                // Explosion logic
+                ballBody.exploded = false;
+                ballBody.collisionPosition = new CANNON.Vec3();
+                ballBody.addEventListener("collide", () => {
+                    if (!ballBody.exploded) {
+                        ballBody.exploded = true;
+                        ballBody.collisionPosition.copy(ballBody.position);
+                    }
+                });
+
+                Game.projectiles.push({ mesh: ballMesh, body: ballBody, type: "MP5_GRENADE" }); // Special type
+            },
+            
+            firePortal(portalId) {
+                // REMOVED
+            },
 
             fireWeapon() {
-                if (Game.state.isFiring) return; // Removed editor check
+                if (Game.state.isFiring && Game.state.currentWeapon !== 6) return; // Allow laser to fire continuously
                 Game.state.isFiring = true;
                 
                 const weaponIndex = Game.state.currentWeapon;
-                setTimeout(() => { Game.state.isFiring = false; }, this.CONSTANTS.WEAPON_COOLDOWNS[weaponIndex]);
+                // Don't set timeout for continuous laser
+                if (weaponIndex !== 6) {
+                    setTimeout(() => { Game.state.isFiring = false; }, this.CONSTANTS.WEAPON_COOLDOWNS[weaponIndex]);
+                }
 
-                // --- Handle Melee Weapons (Hammer, Axe, Bat) ---
-                if (weaponIndex === 4 || weaponIndex === 5 || weaponIndex === 11) {
+                // --- Handle Melee Weapons (Hammer, Axe, Bat, Crowbar) ---
+                if (weaponIndex === 4 || weaponIndex === 5 || weaponIndex === 11 || weaponIndex === 19) {
                     let force = 200; // Hammer
                     let range = 5.0;
                     if (weaponIndex === 5) { // Axe
@@ -2464,16 +3049,19 @@
                         force = 220;
                         range = 6.0;
                         Graphics.swingBat();
+                    } else if (weaponIndex === 19) { // Crowbar
+                        force = 210; // Slightly different force
+                        range = 5.8;
+                        Graphics.swingCrowbar();
                     } else {
                         Graphics.swingHammer();
                     }
                     
-                    const { startPosition, direction } = this.getFireDirection();
-                    const rayEnd = new CANNON.Vec3(
-                        startPosition.x + direction.x * range,
-                        startPosition.y + direction.y * range,
-                        startPosition.z + direction.z * range
-                    );
+                    const { startPosition, direction } = this.getFireDirection(); // Now CANNON.Vec3
+                    const rayEnd = new CANNON.Vec3();
+                    direction.scale(range, rayEnd);
+                    rayEnd.vadd(startPosition, rayEnd);
+                    
                     const rayResult = this.raycast(startPosition, rayEnd);
 
                     if (rayResult.hasHit && rayResult.body.mass > 0) {
@@ -2484,28 +3072,32 @@
                     return;
                 }
                 
-                // --- Handle Raycast Weapons (Laser, Soundwave) ---
+                // --- Handle Raycast Weapons (Laser, Soundwave, Spectate Gun) ---
                 if (weaponIndex === 6) { // Laser
-                    const { startPosition, direction } = this.getFireDirection();
-                    const rayEnd = new CANNON.Vec3(startPosition.x + direction.x * 100, startPosition.y + direction.y * 100, startPosition.z + direction.z * 100);
+                    const { startPosition, direction } = this.getFireDirection(); // Now CANNON.Vec3
+                    const rayEnd = new CANNON.Vec3();
+                    direction.scale(100, rayEnd);
+                    rayEnd.vadd(startPosition, rayEnd);
+                    
                     const rayResult = this.raycast(startPosition, rayEnd);
 
                     if (rayResult.hasHit) {
-                        Graphics.showLaserBeam(startPosition, rayResult.hitPointWorld, 0xff0000);
+                        Graphics.showLaserBeam(startPosition, rayResult.hitPointWorld, 0xff0000); // showLaserBeam handles conversion
                         if (rayResult.body.mass > 0) {
                             const impulse = new CANNON.Vec3(direction.x, direction.y, direction.z);
-                            impulse.scale(400, impulse); // Nerfed force
+                            impulse.scale(15, impulse); // Continuous force (was 600 burst)
                             rayResult.body.applyImpulse(impulse, rayResult.hitPointWorld);
                         }
                     } else {
                         Graphics.showLaserBeam(startPosition, rayEnd, 0xff0000);
                     }
+                    Game.state.isFiring = false; // Allow continuous fire
                     return;
                 }
                 
                 if (weaponIndex === 7) { // Soundwave
                     Graphics.showSoundwaveEffect();
-                    const { startPosition, direction } = this.getFireDirection();
+                    const { startPosition, direction } = this.getFireDirection(); // Now CANNON.Vec3
                     const soundwaveForce = 350; // Nerfed force
                     const soundwaveRange = 20;
                     const soundwaveCone = 0.9; 
@@ -2513,7 +3105,7 @@
                     Game.blocks.forEach(block => {
                         if (block.body.mass > 0) {
                             const distVec = new CANNON.Vec3();
-                            block.body.position.vsub(startPosition, distVec);
+                            block.body.position.vsub(startPosition, distVec); // This is now correct
                             const distance = distVec.length();
                             if (distance < soundwaveRange && distance > 0) {
                                 distVec.normalize();
@@ -2530,17 +3122,30 @@
                     return;
                 }
                 
+                if (weaponIndex === 23) { // Time Freeze
+                    Game.toggleTimeFreeze(); // Renamed
+                    return;
+                }
+                
                 // --- Handle Projectile Weapons ---
 
-                if (weaponIndex === 1 || weaponIndex === 16) Graphics.showMuzzleFlash(); // MG or AK47
+                // Muzzle flash for guns
+                const isGun = [0, 1, 2, 13, 15, 16, 17, 18, 20, 21, 22, 25].includes(weaponIndex); // Added 25 (MP5)
+                if (isGun) {
+                    if (weaponIndex === 1) { // Machine Gun
+                        Graphics.showMuzzleFlash();
+                    } else {
+                        // Creates a one-off flash for other guns
+                        Graphics.showMuzzleFlash();
+                    }
+                }
                 
-                // --- NEW: Shotgun Logic (Buffed) ---
+                // --- NEW: Shotgun Logic ---
                 if (weaponIndex === 15) {
-                    const { startPosition, direction } = this.getFireDirection();
-                    startPosition.addScaledVector(direction, 1.5); // Offset from camera
+                    const { startPosition, direction } = this.getFireDirection(); // Now CANNON.Vec3
+                    startPosition.vadd(direction.scale(1.5), startPosition); // Offset from camera
 
-                    const pelletCount = 12; // Buffed from 8
-                    for (let i = 0; i < pelletCount; i++) {
+                    for (let i = 0; i < 8; i++) {
                         // Create spread
                         const spread = new CANNON.Vec3(
                             (Math.random() - 0.5) * 0.2,
@@ -2550,8 +3155,64 @@
                         const fireDirection = new CANNON.Vec3().copy(direction).vadd(spread);
                         fireDirection.normalize();
                         
-                        this.firePellet(startPosition, fireDirection);
+                        this.firePellet(startPosition, fireDirection); // startPosition is CANNON.Vec3
                     }
+                    return; // Done
+                }
+                
+                // --- NEW: Tactical Missile Logic ---
+                if (weaponIndex === 26) {
+                    const { startPosition, direction } = this.getFireDirection(); // Now CANNON.Vec3
+                    
+                    const rayEnd = new CANNON.Vec3();
+                    direction.scale(1000, rayEnd);
+                    rayEnd.vadd(startPosition, rayEnd);
+                    
+                    const rayResult = this.raycast(startPosition, rayEnd);
+                    
+                    let targetPoint = new CANNON.Vec3();
+                    if (rayResult.hasHit) {
+                        targetPoint.copy(rayResult.hitPointWorld);
+                    } else {
+                        const farPoint = new CANNON.Vec3();
+                        direction.scale(200, farPoint);
+                        farPoint.vadd(startPosition, farPoint);
+                        targetPoint.copy(farPoint);
+                    }
+                    
+                    const spawnPoint = new CANNON.Vec3(targetPoint.x, targetPoint.y + 100, targetPoint.z);
+                    
+                    const radius = Physics.CONSTANTS.WEAPON_PROJECTILE_RADIUS[weaponIndex];
+                    const mass = Physics.CONSTANTS.WEAPON_PROJECTILE_MASS[weaponIndex];
+                    const speed = Physics.CONSTANTS.WEAPON_FIRE_SPEED[weaponIndex];
+                    
+                    // Graphics
+                    const ballGeo = new THREE.BoxGeometry(radius * 0.7, radius * 3, radius * 0.7);
+                    const ballMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.4, metalness: 0.5 });
+                    const ballMesh = new THREE.Mesh(ballGeo, ballMat);
+                    ballMesh.castShadow = true;
+                    Graphics.scene.add(ballMesh);
+                    
+                    // Physics
+                    const ballShape = new CANNON.Box(new CANNON.Vec3(radius * 0.35, radius * 1.5, radius * 0.35));
+                    const collisionMask = Physics.collisionGroups.DEFAULT; // Explode on blocks
+                    
+                    const ballBody = new CANNON.Body({ mass, shape: ballShape, collisionFilterGroup: Physics.collisionGroups.PROJECTILE, collisionFilterMask: collisionMask });
+                    Physics.world.addBody(ballBody);
+                    
+                    ballBody.position.copy(spawnPoint);
+                    ballBody.velocity.set(0, -speed, 0); // Fire straight down
+                    
+                    ballBody.exploded = false;
+                    ballBody.collisionPosition = new CANNON.Vec3();
+                    ballBody.addEventListener("collide", () => {
+                        if (!ballBody.exploded) {
+                            ballBody.exploded = true;
+                            ballBody.collisionPosition.copy(ballBody.position);
+                        }
+                    });
+                    
+                    Game.projectiles.push({ mesh: ballMesh, body: ballBody, type: weaponIndex });
                     return; // Done
                 }
 
@@ -2562,16 +3223,19 @@
                 // Graphics
                 let color = 0x333333;
                 let ballGeo;
-                if (weaponIndex === 1) { color = 0xFFFF00; ballGeo = new THREE.SphereGeometry(radius, 8, 8); }
+                if ([1, 16, 17, 18, 20, 21, 22, 25].includes(weaponIndex)) { // MG, AK, Minigun, M1, Glock, Rev, M3, MP5
+                    color = 0xFFFF00; 
+                    ballGeo = new THREE.SphereGeometry(radius, 8, 8); 
+                }
                 else if (weaponIndex === 2) { color = 0x555555; ballGeo = new THREE.BoxGeometry(radius * 0.7, radius * 0.7, radius * 3); }
                 else if (weaponIndex === 3) { color = 0x006400; ballGeo = new THREE.SphereGeometry(radius, 16, 16); }
                 else if (weaponIndex === 8) { color = 0x00FF00; ballGeo = new THREE.SphereGeometry(radius, 16, 16); }
                 else if (weaponIndex === 9) { color = 0x808080; ballGeo = new THREE.SphereGeometry(radius, 8, 8); }
                 else if (weaponIndex === 10) { color = 0xFFFFFF; ballGeo = new THREE.SphereGeometry(radius, 16, 16); }
-                else if (weaponIndex === 12) { color = 0x8A2BE2; ballGeo = new THREE.SphereGeometry(radius, 8, 8); } // Shrinkgun (Purple)
+                else if (weaponIndex === 12) { color = 0x0077FF; ballGeo = new THREE.SphereGeometry(radius, 8, 8); } // ShrinkGun
                 else if (weaponIndex === 13) { color = 0x333333; ballGeo = new THREE.SphereGeometry(radius, 16, 16); } // GL
                 else if (weaponIndex === 14) { color = 0x8B4513; ballGeo = new THREE.BoxGeometry(0.1, 0.1, 2.5); } // Bow
-                else if (weaponIndex === 16) { color = 0xFFD700; ballGeo = new THREE.SphereGeometry(radius, 8, 8); } // AK47 (Goldish)
+                else if (weaponIndex === 24) { color = 0x111111; ballGeo = new THREE.SphereGeometry(radius, 20, 20); } // Bowling Ball
                 else { ballGeo = new THREE.SphereGeometry(radius, 16, 16); } // Cannon
                 
                 const ballMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.4, metalness: 0.5 });
@@ -2591,7 +3255,7 @@
                 } else if (weaponIndex === 8) { // Bean Gun
                     ballShape = new CANNON.Sphere(radius);
                     collisionMask = Physics.collisionGroups.DEFAULT;
-                } else { // Cannon, MG, Grenade, Sling, Snow, Shrink, Bow, AK47
+                } else { // All other projectile weapons
                     ballShape = (weaponIndex === 14) ? new CANNON.Box(new CANNON.Vec3(0.05, 0.05, 1.25)) : new CANNON.Sphere(radius);
                     collisionMask = Physics.collisionGroups.DEFAULT | Physics.collisionGroups.PLAYER;
                 }
@@ -2599,16 +3263,16 @@
                 const ballBody = new CANNON.Body({ mass, shape: ballShape, collisionFilterGroup: Physics.collisionGroups.PROJECTILE, collisionFilterMask: collisionMask });
                 Physics.world.addBody(ballBody);
 
-                const { startPosition, direction } = this.getFireDirection();
+                const { startPosition, direction } = this.getFireDirection(); // Now CANNON.Vec3
 
                 // Add arc for Grenade, Snowball
-                // REMOVED GL arc (index 13) per user request
                 if (weaponIndex === 3 || weaponIndex === 10) {
-                    direction.y += 0.1; 
+                    direction.y += 0.1; // Lowered arc
                     direction.normalize();
                 }
+                // REMOVED arc for Grenade Launcher
 
-                startPosition.addScaledVector(direction, 1.5);
+                startPosition.vadd(direction.scale(1.5), startPosition); // CANNON.Vec3 math
                 ballBody.position.copy(startPosition);
                 ballBody.velocity.set(direction.x * speed, direction.y * speed, direction.z * speed);
                 
@@ -2639,7 +3303,7 @@
                     ballBody.addEventListener("collide", () => { ballBody.broken = true; });
                 }
                 
-                if (weaponIndex === 12) { // Shrinkgun (formerly Flamethrower)
+                if (weaponIndex === 12) { // ShrinkGun
                     projectile.body.addedTime = Game.state.lastCallTime;
                     
                     // Add shrink logic on collide
@@ -2663,14 +3327,18 @@
                         }
                     });
                 }
+                
+                if (weaponIndex === 24) { // Bowling Ball
+                    ballBody.angularDamping = 0.2;
+                }
 
                 Game.projectiles.push(projectile);
             },
             
             // New helper function for Shotgun pellets
-            firePellet(startPosition, direction) {
+            firePellet(startPosition, direction) { // startPosition is CANNON.Vec3
                 const radius = Physics.CONSTANTS.WEAPON_PROJECTILE_RADIUS[15];
-                const mass = 1.0; // Buffed mass (was implicitly lower)
+                const mass = Physics.CONSTANTS.WEAPON_PROJECTILE_MASS[15];
                 const speed = Physics.CONSTANTS.WEAPON_FIRE_SPEED[15];
                 
                 // Graphics
@@ -2690,7 +3358,7 @@
                 });
                 Physics.world.addBody(pelletBody);
                 
-                pelletBody.position.copy(startPosition);
+                pelletBody.position.copy(startPosition); // This is now correct
                 pelletBody.velocity.set(direction.x * speed, direction.y * speed, direction.z * speed);
                 
                 // Add to projectiles list to be tracked and cleaned up
@@ -2746,8 +3414,11 @@
                 const right = new THREE.Vector3();
 
                 Graphics.camera.getWorldDirection(forward);
-                forward.y = 0; // Removed isFlying check
-                forward.normalize();
+                
+                if (!Game.state.isTimeFrozen) { // Normal mode // Renamed
+                    forward.y = 0; 
+                    forward.normalize();
+                }
                 
                 right.setFromMatrixColumn(Graphics.camera.matrix, 0);
                 
@@ -2763,6 +3434,12 @@
                 // Apply velocity to physics body
                 Physics.playerBody.velocity.x = inputVelocity.x * speed;
                 Physics.playerBody.velocity.z = inputVelocity.z * speed;
+                
+                if (Game.state.isTimeFrozen) { // Renamed
+                    Physics.playerBody.velocity.y = 0; // Stop gravity
+                    if (movement.jump > 0) Physics.playerBody.velocity.y = speed;
+                    if (movement.crouch > 0) Physics.playerBody.velocity.y = -speed;
+                }
             },
 
             resetPlayerState() {
@@ -2770,12 +3447,18 @@
                 Graphics.resetCamera();
             },
             
+            // --- Editor Functions (REMOVED) ---
             getFireDirection() {
                 const direction = new THREE.Vector3();
                 Graphics.camera.getWorldDirection(direction);
                 const startPosition = new THREE.Vector3();
                 Graphics.camera.getWorldPosition(startPosition);
-                return { startPosition, direction };
+                
+                // Convert to CANNON.Vec3
+                const cannonDirection = new CANNON.Vec3(direction.x, direction.y, direction.z);
+                const cannonStartPosition = new CANNON.Vec3(startPosition.x, startPosition.y, startPosition.z);
+                
+                return { startPosition: cannonStartPosition, direction: cannonDirection };
             },
             
             raycast(start, end, mask = Physics.collisionGroups.DEFAULT) {
@@ -2784,7 +3467,13 @@
                     collisionFilterMask: mask
                 }, rayResult);
                 return rayResult;
-            }
+            },
+            
+            // REMOVED placeBlock()
+            
+            // REMOVED deleteBlock()
+            
+            // REMOVED saveLevel()
         };
 
         /**
@@ -2796,11 +3485,14 @@
                 currentLevel: -1,
                 controlScheme: '',
                 isFiring: false,
+                isAltFiring: false, // Added
                 canJump: false,
                 lastCallTime: 0,
-                movement: { forward: 0, backward: 0, left: 0, right: 0 }, // Removed jump/crouch
+                movement: { forward: 0, backward: 0, left: 0, right: 0, jump: 0, crouch: 0 },
                 currentWeapon: 0,
                 isFireButtonDown: false,
+                isTimeFrozen: false, // Renamed
+                // REMOVED portal state
             },
             projectiles: [],
             blocks: [],
@@ -2812,9 +3504,30 @@
                 UI.init();
                 this.animate();
             },
+            
+            toggleTimeFreeze() { // Renamed
+                this.state.isTimeFrozen = !this.state.isTimeFrozen; // Renamed
+                
+                if (this.state.isTimeFrozen) { // Renamed
+                    Physics.playerBody.collisionFilterGroup = 0; // No collisions
+                    Physics.playerBody.mass = 0;
+                    Physics.playerBody.updateMassProperties();
+                } else {
+                    Physics.playerBody.collisionFilterGroup = Physics.collisionGroups.PLAYER;
+                    Physics.playerBody.mass = Physics.CONSTANTS.PLAYER_MASS;
+                    Physics.playerBody.updateMassProperties();
+                }
+            },
 
             startLevel(levelIndex) {
                 this.state.currentLevel = levelIndex;
+                this.state.isTimeFrozen = false; // Renamed
+                
+                // Reset player physics to default
+                Physics.playerBody.collisionFilterGroup = Physics.collisionGroups.PLAYER;
+                Physics.playerBody.mass = Physics.CONSTANTS.PLAYER_MASS;
+                Physics.playerBody.updateMassProperties();
+                
                 World.loadLevel(levelIndex);
                 UI.showGameUI();
                 Controls.startControls();
@@ -2826,7 +3539,15 @@
                 
                 if (Game.state.currentLevel !== -1) { 
                     World.resetSimulation();
-                    this.state.currentLevel = -1; // FIX: Was missing this.
+                    this.state.currentLevel = -1;
+                }
+                
+                // Reset player physics if they were spectating
+                if (this.state.isTimeFrozen) { // Renamed
+                    this.state.isTimeFrozen = false; // Renamed
+                    Physics.playerBody.collisionFilterGroup = Physics.collisionGroups.PLAYER;
+                    Physics.playerBody.mass = Physics.CONSTANTS.PLAYER_MASS;
+                    Physics.playerBody.updateMassProperties();
                 }
             },
 
@@ -2839,7 +3560,9 @@
                 if (this.state.lastCallTime) {
                     dt = (time - this.state.lastCallTime) / 1000;
                     if (Physics.world) {
-                         Physics.world.step(Physics.CONSTANTS.TIMESTEP, dt);
+                        if(!Game.state.isTimeFrozen) { // Don't step physics if time is frozen
+                             Physics.world.step(Physics.CONSTANTS.TIMESTEP, dt);
+                        }
                     }
                 }
                 this.state.lastCallTime = time;
@@ -2860,24 +3583,32 @@
                 // Only run game logic if a level is active
                 if (this.state.currentLevel !== -1) {
                     
-                    Physics.checkGroundStatus(); // Removed isFlying check
+                    Physics.checkGroundStatus(); // Now has spectate check
                     
                     Controls.handleGamepadInput(dt);
                     Controls.updatePlayerMovement();
 
                     if (Game.state.isFireButtonDown) { // Removed editor check
-                        // Auto fire logic: MG (1), Shrink (12), AK (16)
-                        if (Game.state.currentWeapon === 1 || Game.state.currentWeapon === 12 || Game.state.currentWeapon === 16) { 
+                        const w = Game.state.currentWeapon;
+                        if (w === 1 || w === 6 || w === 12 || w === 16 || w === 17 || w === 19 || w === 22 || w === 25) { // MG, Laser, Shrink, AK, Mini, Crowbar, M3, MP5
                             Controls.fireWeapon();
                         }
+                    } else {
+                         if (Game.state.currentWeapon === 6) { // Stop laser
+                            if (Graphics.laserBeam) Graphics.laserBeam.visible = false;
+                        }
                     }
+                    
+                    // REMOVED Spin minigun
+                    
+                    // REMOVED Portal Teleport Logic
 
                     // Update all projectiles
                     for (let i = Game.projectiles.length - 1; i >= 0; i--) {
                         const item = Game.projectiles[i];
 
                         // --- RPG Anti-Gravity ---
-                        if (item.type === 2 && item.body.mass > 0 && !item.body.exploded) {
+                        if ((item.type === 2 || item.type === 26) && item.body.mass > 0 && !item.body.exploded) { // Added Missile
                             const antiGravity = new CANNON.Vec3(0, -Physics.world.gravity.y * item.body.mass, 0);
                             item.body.applyForce(antiGravity, item.body.position);
                         }
@@ -2898,10 +3629,10 @@
                             continue;
                         }
                         
-                        // --- Snowball/Shrink/Pellet breaking/lifespan ---
+                        // --- Snowball/ShrinkGun/Pellet breaking ---
                         if ((item.type === 10 && item.body.broken) || 
-                            (item.type === 12 && Game.state.lastCallTime > item.body.addedTime + 500) || // 500ms lifespan for shrink ray
-                            (item.type === 15 && Game.state.lastCallTime > item.body.addedTime + 60000)) // Increased to 60s for shotgun pellets
+                            (item.type === 12 && Game.state.lastCallTime > item.body.addedTime + 500) || // 500ms lifespan
+                            (item.type === 15 && Game.state.lastCallTime > item.body.addedTime + 3000)) // 3s lifespan for pellets
                         {
                             Physics.world.removeBody(item.body);
                             Graphics.scene.remove(item.mesh);
@@ -2909,12 +3640,24 @@
                             continue;
                         }
 
-                        // --- RPG, Grenade, & GL Explosions ---
-                        if ((item.type === 2 || item.type === 3 || item.type === 13) && item.body.exploded) {
-                            Graphics.createExplosion(item.body.collisionPosition);
+                        // --- RPG, Grenade, GL, Missile Explosions ---
+                        if ((item.type === 2 || item.type === 3 || item.type === 13 || item.type === "MP5_GRENADE" || item.type === 26) && item.body.exploded) {
+                            
+                            let explosionRadius = Physics.CONSTANTS.EXPLOSION_RADIUS;
+                            let explosionForce = Physics.CONSTANTS.EXPLOSION_FORCE;
+                            let visualScale = 1.0;
 
-                            const explosionRadius = Physics.CONSTANTS.EXPLOSION_RADIUS;
-                            const explosionForce = Physics.CONSTANTS.EXPLOSION_FORCE;
+                            if (item.type === "MP5_GRENADE") {
+                                explosionRadius = 4; // Smaller radius
+                                explosionForce = 80; // Less force
+                                visualScale = 0.5; // Smaller visual
+                            } else if (item.type === 26) { // Tactical Missile
+                                explosionRadius = 15; // Big radius
+                                explosionForce = 300; // Big force
+                                visualScale = 2.0; // Big visual
+                            }
+                            
+                            Graphics.createExplosion(item.body.collisionPosition, visualScale);
                             const explosionPos = item.body.collisionPosition;
 
                             for (const block of Game.blocks) {
@@ -2955,15 +3698,22 @@
                         // Default projectile update
                         item.mesh.position.copy(item.body.position);
                         
-                        // Orient RPG, Bow
-                        if (item.type === 2 || item.type === 14) {
+                        // Orient RPG, Bow, Missile
+                        if (item.type === 2 || item.type === 14 || item.type === 26) {
                             const velocity = item.body.velocity;
                             if (velocity.lengthSquared() > 0.1) {
                                 const cannonDirection = velocity.clone().normalize();
                                 const threeDirection = new THREE.Vector3(cannonDirection.x, cannonDirection.y, cannonDirection.z);
                                 const quaternion = new THREE.Quaternion();
-                                const zAxis = new THREE.Vector3(0, 0, 1); // Both use Z-axis
-                                quaternion.setFromUnitVectors(zAxis, threeDirection);
+                                
+                                let upAxis;
+                                if (item.type === 2 || item.type === 14) {
+                                    upAxis = new THREE.Vector3(0, 0, 1); // Z-axis for RPG/Bow
+                                } else {
+                                    upAxis = new THREE.Vector3(0, 1, 0); // Y-axis for Missile
+                                }
+                                
+                                quaternion.setFromUnitVectors(upAxis, threeDirection);
                                 item.mesh.quaternion.copy(quaternion);
                             }
                         } else {
